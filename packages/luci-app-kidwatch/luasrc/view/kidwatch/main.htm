@@ -72,6 +72,20 @@
 #kw .kw-catlegend b{font-weight:600;margin-left:5px;font-variant-numeric:tabular-nums}
 #kw .kw-catlegend span{color:var(--kw-dim)}
 #kw .kw-catlegend .kw-cdnnote{width:100%;font-size:11px;opacity:.75;padding-top:2px}
+
+/* 此刻在线：一行一台设备，应用名做主视觉，网址做辅 */
+#kw .kw-live-list{display:flex;flex-direction:column}
+#kw .kw-lrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--kw-border)}
+#kw .kw-lrow:first-child{border-top:0;padding-top:2px}
+#kw .kw-lrole{flex:none;width:7px;height:7px;border-radius:50%;background:#1D9E75}
+#kw .kw-lwho{flex:none;width:132px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-lwhat{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;overflow:hidden}
+#kw .kw-lapp{flex:none;color:var(--kw-accent);font-weight:600}
+#kw .kw-lurl{color:var(--kw-dim);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-lrate{flex:none;font-size:12px;color:var(--kw-dim);font-variant-numeric:tabular-nums;text-align:right;min-width:104px}
+#kw .kw-lrate b{color:inherit;font-weight:600}
+#kw .kw-lsig{flex:none;width:46px;font-size:11px;color:var(--kw-faint);text-align:right}
+#kw .kw-live-empty{color:var(--kw-dim);font-size:13px;padding:6px 0 2px}
 #kw .dim{color:var(--kw-dim);font-style:italic}
 
 /* 夜间 */
@@ -125,7 +139,7 @@
 
 <div id="kw">
   <div class="kw-head">
-    <div class="kw-title">家长看板<span class="kw-hint" id="kw-hint">正在读取…</span></div>
+    <div class="kw-title"><span id="kw-title">家长看板</span><span class="kw-hint" id="kw-hint">正在读取…</span></div>
     <div class="kw-tools">
       <select id="kw-dev"></select>
       <div class="kw-seg" id="kw-rng">
@@ -154,6 +168,12 @@
       <div class="kw-kpi"><div class="k">访问站点</div><div class="v num" id="k-site">—</div><div class="s" id="k-site-s">去重后的站点数</div></div>
       <div class="kw-kpi"><div class="k">最常访问</div><div class="v" id="k-top">—</div><div class="s" id="k-top-s">按时长</div></div>
     </div>
+
+    <!-- 此刻在线：直接消费固件 DPI 的实时连接快照，补上"正在看什么"这个视角 -->
+    <section class="kw-card kw-live" id="ov-live-card">
+      <h3>此刻在线<span class="sub" id="ov-live-sub">DPI 实时快照 · 每 15 秒刷新</span></h3>
+      <div class="kw-live-list" id="ov-live"></div>
+    </section>
 
     <div class="kw-grid2">
       <section class="kw-card">
@@ -290,7 +310,24 @@
               cdn:'网络服务'};
   var CATORDER = ['video','game','music','novel','social','study','shop','news','tool','other','cdn'];
 
-  var S = { range:'today', mac:'all', tab:'ov', day:0, met:'dur', cat:'all', q:'', listTotal:0,
+  // 五个菜单入口共用这一份模板，靠 URL 末段决定默认打开哪个页签
+  var TABPATH = {ov:'/admin/fwx_monitor/kidwatch', web:'/admin/fwx_internet_record/kwsites',
+                 night:'/admin/fwx_parental_control/kwnight', sys:'/admin/fwx_monitor/kwsys',
+                 dev:'/admin/fwx_user/kwdev'};
+  var TABSEG = {kidwatch:'ov', kwsites:'web', kwnight:'night', kwsys:'sys', kwdev:'dev'};
+  var TABTITLE = {ov:'家长看板', web:'网站记录', night:'夜间守卫', sys:'设备状态', dev:'设备标签'};
+  function bootTab(){
+    var seg = (location.pathname.replace(/\/+$/,'').split('/').pop() || '').toLowerCase();
+    var q = (location.search.match(/[?&]t=(\w+)/) || [])[1];
+    var t = q || TABSEG[seg] || 'ov';
+    return TABTITLE[t] ? t : 'ov';
+  }
+  function tabUrl(t){
+    var pre = location.pathname.indexOf('/cgi-bin/luci') === 0 ? '/cgi-bin/luci' : '';
+    return pre + (TABPATH[t] || TABPATH.ov);
+  }
+
+  var S = { range:'today', mac:'all', tab:bootTab(), day:0, met:'dur', cat:'all', q:'', listTotal:0,
             page:0, pageSize:50, hours:null, list:null, devs:[], nightDays:[] };
 
   function isDark(){
@@ -370,7 +407,59 @@
   }
 
   /* ---------------- 概览 ---------------- */
+  /* ---- 此刻在线（DPI 实时快照）----
+     和历史统计互补：历史靠 DNS 反推域名，DPI 直接读连接里的 SNI/Host，
+     还能给出应用名。两者对不上时不覆盖，各说各的。 */
+  var liveTimer = null;
+  function fmtRate(b){
+    if (!b) return '0';
+    if (b < 1024) return b + ' B/s';
+    if (b < 1024*1024) return (b/1024).toFixed(0) + ' KB/s';
+    return (b/1024/1024).toFixed(1) + ' MB/s';
+  }
+  function loadLive(){
+    api({fn:'live'}, function(e, d){
+      var rows = d || [];
+      var box = $('#ov-live');
+      if (!rows.length) {
+        $('#ov-live-sub').text('DPI 实时快照 · 每 15 秒刷新');
+        box.html('<div class="kw-live-empty">此刻没有设备在传输数据</div>');
+        return;
+      }
+      // 按实时总速率排序，把正在占带宽的排前面
+      rows.sort(function(a,b){ return (b.up+b.down) - (a.up+a.down); });
+      var alias = {};
+      (S.devs || []).forEach(function(v){ alias[v.mac] = v.name; });
+      var h = '';
+      rows.forEach(function(r){
+        var who = alias[r.mac] || r.host || r.ip || r.mac;
+        var app = r.app ? '<span class="kw-lapp">' + esc(r.app) + '</span>' : '';
+        var url = r.url ? '<span class="kw-lurl">' + esc(r.url) + '</span>' : '';
+        var what = (app || url) ? app + url
+                 : '<span class="kw-lurl">已连接，暂无应用信息</span>';
+        var sig = r.wl ? (r.band ? r.band.toUpperCase() + ' ' + (r.rssi||0) + 'dBm' : '无线') : '有线';
+        h += '<div class="kw-lrow">'
+           +   '<span class="kw-lrole"></span>'
+           +   '<span class="kw-lwho" title="'+esc(r.ip||'')+'">' + esc(who) + '</span>'
+           +   '<span class="kw-lwhat">' + what + '</span>'
+           +   '<span class="kw-lrate num">↑ <b>' + fmtRate(r.up) + '</b>　↓ <b>' + fmtRate(r.down) + '</b></span>'
+           +   '<span class="kw-lsig">' + esc(sig) + '</span>'
+           + '</div>';
+      });
+      $('#ov-live-sub').text('DPI 实时快照 · ' + rows.length + ' 台在线 · 每 15 秒刷新');
+      box.html(h);
+    });
+  }
+  function startLive(){
+    if (liveTimer) return;
+    liveTimer = setInterval(function(){
+      // 离开概览页就别再轮询了，省路由器的 CPU
+      if (S.tab === 'ov' && !document.hidden) loadLive();
+    }, 15000);
+  }
+
   function loadOverview(){
+    loadLive();
     api({fn:'overview', range:S.range, mac:S.mac}, function(e, d){
       var o = (d && d[0]) || {};
       $('#k-dur').text(fmtDur(o.dur));
@@ -781,7 +870,10 @@
   function refresh(force){
     var r = S.range, macLabel = S.mac === 'all' ? '全部设备' : ($('#kw-dev option:selected').text() || '');
     var rl = {today:'今天',yesterday:'昨天','7d':'近 7 天','30d':'近 30 天'}[r] || r;
-    $('#kw-hint').text(rl + ' · ' + macLabel + ' · 数据每 10 秒采集一次');
+    $('#kw-hint').text(
+      S.tab === 'sys'   ? '整机指标 · 每 60 秒采集一次' :
+      S.tab === 'night' ? '每晚 22:30 → 次日 06:00 · 5 分钟一格' :
+                          rl + ' · ' + macLabel + ' · 数据每 10 秒采集一次');
     if (S.tab === 'ov') loadOverview();
     if (S.tab === 'web') loadWeb();
     if (S.tab === 'night') loadNight();
@@ -789,11 +881,23 @@
     if (S.tab === 'sys') loadSys();
   }
 
-  $('#kw-tabs').on('click', 'button', function(){
-    var t = $(this).data('t');
+  function applyTab(t, push){
     S.tab = t;
-    $('#kw-tabs button').removeClass('on'); $(this).addClass('on');
+    $('#kw-tabs button').removeClass('on').filter('[data-t="'+t+'"]').addClass('on');
     $('#kw [data-pane]').hide(); $('#kw [data-pane="'+t+'"]').show();
+    $('#kw-title').text(TABTITLE[t] || '家长看板');
+    // 系统页和夜间页各自带时间选择器，顶栏那组对它们没意义，收起来免得困惑
+    var own = (t === 'sys' || t === 'night');
+    $('#kw-rng').toggle(!own);
+    $('#kw-dev').toggle(!own);
+    // 让地址栏跟着走：刷新/收藏/分享都落在同一个功能上
+    if (push && window.history && history.replaceState) {
+      try { history.replaceState(null, '', tabUrl(t)); } catch(e){}
+    }
+  }
+
+  $('#kw-tabs').on('click', 'button', function(){
+    applyTab($(this).data('t'), true);
     refresh();
   });
   $('#kw-rng').on('click', 'button', function(){
@@ -855,6 +959,8 @@
   });
 
   // 启动
+  applyTab(S.tab, false);
+  startLive();
   loadDevs(function(){
     var v = window.localStorage ? localStorage.getItem('kw.mac') : null;
     if (v && $('#kw-dev option[value="'+v+'"]').length) { S.mac = v; $('#kw-dev').val(v); }

@@ -8,10 +8,61 @@ local function q(s)
 	return "'" .. s .. "'"
 end
 
+-- KidWatch 不是一个"大杂烩"页面，而是按固件原有的信息架构分散到各分类下：
+--   系统监控 / 上网记录 / 家长控制 / 用户列表
+-- 五处入口共用同一份模板，前端按 URL 末段决定默认打开哪个页签，
+-- 页签之间仍可横向切换（同一份数据的不同视角）。
+local ENTRY = {
+	{ {"admin", "fwx_monitor", "kidwatch"}, "家长看板", 60, "ov" },
+	{ {"admin", "fwx_internet_record", "kwsites"}, "网站记录", 82, "web" },
+	{ {"admin", "fwx_parental_control", "kwnight"}, "夜间守卫", 40, "night" },
+	{ {"admin", "fwx_monitor", "kwsys"}, "设备状态", 61, "sys" },
+	{ {"admin", "fwx_user", "kwdev"}, "设备标签", 14, "dev" },
+}
+
 function index()
 	entry({"admin", "fwx_monitor"}, firstchild(), _("System Monitor"), 12).dependent = true
-	entry({"admin", "fwx_monitor", "kidwatch"}, template("kidwatch/main"), "家长看板", 60).dependent = true
+	entry({"admin", "fwx_internet_record"}, firstchild(), _("Internet Record"), 80).dependent = true
+	entry({"admin", "fwx_parental_control"}, firstchild(), _("Parental Control"), 30).dependent = true
+	entry({"admin", "fwx_user"}, firstchild(), _("User List"), 13).dependent = true
+
+	for _, e in ipairs(ENTRY) do
+		entry(e[1], template("kidwatch/main"), e[2], e[3]).dependent = true
+	end
 	entry({"admin", "kidwatch_api", "call"}, call("api")).leaf = true
+end
+
+-- 从固件自带的 fwx DPI 取"此刻在线"快照。
+-- 与 kidwatch 自己按 DNS+conntrack 累积的历史数据互补：
+--   DPI 看的是连接里真实的 SNI / Host，不受 DNS 缓存、QUIC 直连影响，
+--   还能给出应用名（小红书 / DeepSeek …），这是只看 DNS 拿不到的。
+local function live()
+	local users = luci.util.ubus("fwx", "common", {
+		api = "get_active_users",
+		data = { count = 64 }
+	})
+	local out = {}
+	local list = users and users.data and users.data.users
+	if type(list) ~= "table" then return out end
+	for _, u in ipairs(list) do
+		local url = tostring(u.url or "")
+		local app = tostring(u.app or "")
+		if url ~= "" or app ~= "" then
+			out[#out + 1] = {
+				mac  = tostring(u.mac or ""),
+				ip   = tostring(u.ip or ""),
+				host = tostring(u.hostname or u.nickname or ""),
+				app  = app,
+				url  = url,
+				up   = tonumber(u.up_rate) or 0,
+				down = tonumber(u.down_rate) or 0,
+				band = tostring(u.band or ""),
+				rssi = tonumber(u.rssi) or 0,
+				wl   = tonumber(u.is_wireless) or 0,
+			}
+		end
+	end
+	return out
 end
 
 local FN = {
@@ -49,6 +100,11 @@ function api()
 	luci.http.prepare_content("application/json")
 	local fn = luci.http.formvalue("fn") or ""
 	local cmd = "/usr/bin/kidwatch "
+
+	if fn == "live" then
+		luci.http.write_json(live())
+		return
+	end
 
 	if fn == "setdev" or fn == "setsite" then
 		if not luci.dispatcher.context.authsession then
