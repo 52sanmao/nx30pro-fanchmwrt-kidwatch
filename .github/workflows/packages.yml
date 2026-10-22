@@ -89,3 +89,5 @@ jobs:
             sdk/logs/
           if-no-files-found: ignore
           retention-days: 7
+
+# 触发 Actions 重新扫描
