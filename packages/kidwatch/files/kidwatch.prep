@@ -1,0 +1,13 @@
+#!/bin/sh /etc/rc.common
+# kidwatch 预备：dnsmasq (S19) 启动前必须让日志文件存在，
+# 否则 ujail 内无法创建/打开它，dnsmasq 会直接退出。
+START=18
+
+start() {
+	mkdir -p /tmp/kidwatch /etc/kidwatch
+	[ -e /tmp/kidwatch-dnsmasq.log ] || : > /tmp/kidwatch-dnsmasq.log
+}
+
+boot() {
+	start
+}

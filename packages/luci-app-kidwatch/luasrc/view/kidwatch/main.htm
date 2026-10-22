@@ -1,0 +1,823 @@
+<%+header%>
+<link rel="stylesheet" href="<%=resource%>/css/common.css?v=1.0">
+<script src="<%=resource%>/jquery-3.7.1.min.js?v=1.0"></script>
+<script src="<%=resource%>/echarts.min.js?v=1.0"></script>
+<style>
+#kw{
+  --kw-border:#e5e7eb; --kw-dim:#6b7280; --kw-faint:#9ca3af;
+  --kw-soft:#f6f7f9; --kw-soft2:#eef1f5; --kw-accent:#2885e8;
+  width:calc(100% - 16px); max-width:1180px; margin:0 auto 24px;
+  color:inherit; font-size:14px;
+}
+[data-darkmode="true"] #kw{
+  --kw-border:rgba(255,255,255,.16); --kw-dim:#9aa3b2; --kw-faint:#6b7280;
+  --kw-soft:rgba(255,255,255,.05); --kw-soft2:rgba(255,255,255,.09); --kw-accent:#4d9bf0;
+}
+#kw *{box-sizing:border-box}
+#kw .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* 顶栏 */
+#kw .kw-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;padding:14px 0 12px}
+#kw .kw-title{font-size:19px;font-weight:600;line-height:1.2}
+#kw .kw-hint{display:block;font-size:12px;font-weight:400;color:var(--kw-dim);margin-top:3px}
+#kw .kw-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+#kw select,#kw input[type=text],#kw input[type=date]{height:30px;padding:0 8px;border:1px solid var(--kw-border);border-radius:6px;background:transparent;color:inherit;font-size:13px;max-width:170px}
+#kw .kw-seg{display:inline-flex;border:1px solid var(--kw-border);border-radius:6px;overflow:hidden}
+#kw .kw-seg button{appearance:none;border:0;background:transparent;color:var(--kw-dim);font-size:13px;padding:6px 11px;cursor:pointer}
+#kw .kw-seg button+button{border-left:1px solid var(--kw-border)}
+#kw .kw-seg button.on{background:var(--kw-soft2);color:inherit;font-weight:600}
+#kw .kw-btn{height:30px;padding:0 12px;border:1px solid var(--kw-border);border-radius:6px;background:transparent;color:inherit;font-size:13px;cursor:pointer}
+#kw .kw-btn:hover{background:var(--kw-soft)}
+#kw .kw-btn.pri{border-color:var(--kw-accent);color:var(--kw-accent)}
+
+/* 页签 */
+#kw .kw-tabs{display:flex;gap:2px;border-bottom:1px solid var(--kw-border);margin-bottom:16px;overflow-x:auto}
+#kw .kw-tabs button{appearance:none;border:0;background:transparent;color:var(--kw-dim);font-size:14px;padding:9px 14px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+#kw .kw-tabs button.on{color:inherit;font-weight:600;border-bottom-color:var(--kw-accent)}
+
+/* 卡片 */
+#kw .kw-card{border:1px solid var(--kw-border);border-radius:8px;padding:14px 16px;margin-bottom:14px}
+#kw .kw-card>h3{margin:0 0 2px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:10px}
+#kw .kw-card>h3 .sub{font-weight:400;font-size:12px;color:var(--kw-dim)}
+#kw .kw-note{font-size:12px;color:var(--kw-dim);margin:6px 0 0;line-height:1.6}
+#kw .kw-empty{padding:26px 0;text-align:center;color:var(--kw-faint);font-size:13px}
+
+/* KPI */
+#kw .kw-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+#kw .kw-kpi{border:1px solid var(--kw-border);border-radius:8px;padding:12px 14px;min-width:0}
+#kw .kw-kpi .k{font-size:12px;color:var(--kw-dim)}
+#kw .kw-kpi .v{font-size:23px;font-weight:600;line-height:1.25;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#kw .kw-kpi .s{font-size:12px;color:var(--kw-faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+#kw .kw-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+#kw .kw-chart{width:100%}
+
+/* 表格 */
+#kw table.kw-tbl{width:100%;border-collapse:collapse;font-size:13px}
+#kw table.kw-tbl th{text-align:left;font-weight:500;color:var(--kw-dim);font-size:12px;padding:7px 8px;border-bottom:1px solid var(--kw-border);white-space:nowrap}
+#kw table.kw-tbl td{padding:8px;border-bottom:1px solid var(--kw-border);vertical-align:middle}
+#kw table.kw-tbl tr:last-child td{border-bottom:0}
+#kw table.kw-tbl td.r,#kw table.kw-tbl th.r{text-align:right}
+#kw table.kw-tbl tbody tr:hover{background:var(--kw-soft)}
+#kw table.kw-tbl .dom{color:var(--kw-faint);font-size:11px;margin-left:6px}
+#kw .cat{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;border:1px solid;line-height:1.6;white-space:nowrap}
+#kw .bar{position:relative;height:6px;border-radius:3px;background:var(--kw-soft2);min-width:60px}
+#kw .bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;display:block}
+
+/* 类目条 */
+#kw .kw-catbar{display:flex;height:26px;border-radius:5px;overflow:hidden;margin:12px 0 10px;background:var(--kw-soft2)}
+#kw .kw-catbar>span{display:block;height:100%}
+#kw .kw-catlegend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px}
+#kw .kw-catlegend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+#kw .kw-catlegend b{font-weight:600;margin-left:5px;font-variant-numeric:tabular-nums}
+#kw .kw-catlegend span{color:var(--kw-dim)}
+
+/* 夜间 */
+#kw .kw-nightrow{display:grid;grid-template-columns:120px 1fr 92px;gap:10px;align-items:center;margin-bottom:6px}
+#kw .kw-nightrow .nm{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-nstrip{display:flex;gap:1px;height:22px}
+#kw .kw-nstrip>i{flex:1;border-radius:1px;background:var(--kw-soft2)}
+#kw .kw-nstrip>i.q{background:transparent;border:1px solid var(--kw-soft2)}
+#kw .kw-nstrip>i.hi{outline:1.5px solid #D85A30;outline-offset:0}
+#kw .kw-nightax{display:flex;justify-content:space-between;font-size:11px;color:var(--kw-faint);margin:4px 0 0 130px}
+#kw .kw-zoom{font-size:12px;color:var(--kw-dim);text-align:right;font-variant-numeric:tabular-nums}
+#kw .kw-split{position:relative}
+#kw .kw-split::after{content:"00:00";position:absolute;left:0;top:26px;font-size:10px;color:var(--kw-faint)}
+
+/* 热力图（7 晚） */
+#kw .kw-heat{display:grid;grid-template-columns:96px 1fr;gap:6px 10px;align-items:center;font-size:12px}
+#kw .kw-heatrow{display:flex;gap:1px;height:16px}
+#kw .kw-heatrow>i{flex:1;border-radius:1px;background:var(--kw-soft2)}
+
+/* 设备行内编辑 */
+#kw .kw-devin{height:26px;border:1px solid transparent;border-radius:5px;background:transparent;color:inherit;font-size:13px;padding:0 5px;width:100%;max-width:150px}
+#kw .kw-devin:hover,#kw .kw-devin:focus{border-color:var(--kw-border);background:var(--kw-soft);outline:0}
+#kw select.kw-devin{max-width:110px}
+
+/* 分页 */
+#kw .kw-pager{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px;font-size:12px;color:var(--kw-dim)}
+#kw .kw-pager button{height:26px;min-width:28px;border:1px solid var(--kw-border);background:transparent;color:inherit;border-radius:5px;cursor:pointer;font-size:12px}
+#kw .kw-pager button:disabled{opacity:.4;cursor:default}
+
+/* 下钻 */
+#kw .kw-drill{margin-top:12px;border-top:1px dashed var(--kw-border);padding-top:12px;display:none}
+#kw .kw-drill.on{display:block}
+#kw .kw-tl{position:relative;height:34px;background:var(--kw-soft);border-radius:5px;margin:8px 0 4px}
+#kw .kw-tl>i{position:absolute;top:6px;bottom:6px;border-radius:2px;background:#D85A30;opacity:.85;min-width:2px}
+#kw .kw-tlax{display:flex;justify-content:space-between;font-size:11px;color:var(--kw-faint)}
+#kw .kw-tllist{margin-top:8px;font-size:12px;color:var(--kw-dim);line-height:1.9}
+
+#kw .kw-tip{font-size:12px;line-height:1.75;color:var(--kw-dim)}
+#kw .kw-tip b{color:inherit}
+#kw .kw-tip ul{margin:4px 0 0;padding-left:18px}
+#kw .kw-tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;background:var(--kw-soft2);color:var(--kw-dim);margin-left:6px}
+
+@media (max-width:860px){
+  #kw{width:calc(100% - 12px)}
+  #kw .kw-kpis{grid-template-columns:1fr 1fr}
+  #kw .kw-grid2{grid-template-columns:1fr}
+  #kw .kw-nightrow{grid-template-columns:74px 1fr 56px}
+  #kw .kw-nightax{margin-left:84px}
+}
+</style>
+
+<div id="kw">
+  <div class="kw-head">
+    <div class="kw-title">家长看板<span class="kw-hint" id="kw-hint">正在读取…</span></div>
+    <div class="kw-tools">
+      <select id="kw-dev"></select>
+      <div class="kw-seg" id="kw-rng">
+        <button data-r="today" class="on">今天</button>
+        <button data-r="yesterday">昨天</button>
+        <button data-r="7d">近 7 天</button>
+        <button data-r="30d">近 30 天</button>
+      </div>
+      <button class="kw-btn" id="kw-refresh">刷新</button>
+    </div>
+  </div>
+
+  <div class="kw-tabs" id="kw-tabs">
+    <button data-t="ov" class="on">概览</button>
+    <button data-t="web">网站明细</button>
+    <button data-t="night">夜间守卫</button>
+    <button data-t="dev">设备</button>
+    <button data-t="sys">系统</button>
+  </div>
+
+  <!-- ================= 概览 ================= -->
+  <div data-pane="ov">
+    <div class="kw-kpis">
+      <div class="kw-kpi"><div class="k">上网时长</div><div class="v num" id="k-dur">—</div><div class="s" id="k-dur-s">合计活跃时间</div></div>
+      <div class="kw-kpi"><div class="k">流量</div><div class="v num" id="k-by">—</div><div class="s" id="k-by-s">上行 + 下行</div></div>
+      <div class="kw-kpi"><div class="k">访问站点</div><div class="v num" id="k-site">—</div><div class="s" id="k-site-s">去重后的站点数</div></div>
+      <div class="kw-kpi"><div class="k">最常访问</div><div class="v" id="k-top">—</div><div class="s" id="k-top-s">按时长</div></div>
+    </div>
+
+    <div class="kw-grid2">
+      <section class="kw-card">
+        <h3>类目分布<span class="sub">按时长</span></h3>
+        <div class="kw-catbar" id="ov-catbar"></div>
+        <div class="kw-catlegend" id="ov-catlegend"></div>
+      </section>
+      <section class="kw-card">
+        <h3>一天里的节奏<span class="sub">按时段 · 按类目堆叠</span></h3>
+        <div id="ov-hours" class="kw-chart" style="height:214px"></div>
+        <p class="kw-note" id="ov-hours-note"></p>
+      </section>
+    </div>
+
+    <section class="kw-card">
+      <h3>最常去的网站<span class="sub" id="ov-top-sub">前 10 名</span></h3>
+      <table class="kw-tbl" id="ov-top"></table>
+    </section>
+  </div>
+
+  <!-- ================= 网站明细 ================= -->
+  <div data-pane="web" style="display:none">
+    <section class="kw-card">
+      <h3>筛选
+        <span class="sub">
+          <select id="web-cat" style="height:26px">
+            <option value="all">全部类目</option>
+            <option value="video">视频</option><option value="game">游戏</option>
+            <option value="social">社交</option><option value="study">学习</option>
+            <option value="shop">购物</option><option value="music">音乐</option>
+            <option value="novel">小说</option><option value="news">资讯</option>
+            <option value="tool">工具</option><option value="other">未分类</option>
+          </select>
+        </span>
+      </h3>
+      <div class="kw-tools" style="margin:10px 0 6px">
+        <div class="kw-seg" id="web-met">
+          <button data-m="dur" class="on">按时长</button>
+          <button data-m="by">按流量</button>
+          <button data-m="n">按次数</button>
+        </div>
+        <input type="text" id="web-q" placeholder="搜索网站 / 域名" style="width:180px">
+        <button class="kw-btn" id="web-csv">导出 CSV</button>
+      </div>
+      <table class="kw-tbl" id="web-tbl"></table>
+      <div class="kw-pager">
+        <span id="web-total"></span>
+        <button id="web-prev">上一页</button>
+        <span id="web-page"></span>
+        <button id="web-next">下一页</button>
+      </div>
+      <div class="kw-drill" id="web-drill"></div>
+    </section>
+  </div>
+
+  <!-- ================= 夜间守卫 ================= -->
+  <div data-pane="night" style="display:none">
+    <section class="kw-card">
+      <h3>夜间活跃度
+        <span class="sub">
+          <select id="night-day" style="height:26px"></select>
+        </span>
+      </h3>
+      <p class="kw-note">
+        每格 5 分钟，深色代表"真的在用"——判定用的是无线空口占用（airtime）+ 新建连接 + DNS 查询 + 不同域名数，
+        <b>不是流量大小</b>，所以手机待机收推送不会被误判。
+      </p>
+      <div id="night-body" style="margin-top:12px"></div>
+      <div class="kw-nightax" id="night-ax"></div>
+      <div class="kw-catlegend" id="night-legend" style="margin-top:10px"></div>
+    </section>
+
+    <section class="kw-card">
+      <h3>最近 7 晚<span class="sub">同一时刻横向对比</span></h3>
+      <div class="kw-heat" id="night-heat"></div>
+    </section>
+
+    <section class="kw-card">
+      <h3>怎么判定的</h3>
+      <div class="kw-tip">
+        <ul>
+          <li><b>第一层：在不在用</b> —— 取 <span class="num">iw</span> 的 <span class="num">rx/tx duration</span>（射频占用微秒）。
+              待机通常 0.1%–0.5%，刷视频 5%–40%，差两个数量级。</li>
+          <li><b>第二层：用什么</b> —— DNS 查询 + conntrack 反查域名与类目；就算开了加密 DNS 看不到域名，airtime 仍然能说明"在用"。</li>
+          <li><b>基线</b> —— 每台设备学 7 晚，取 P90 作为"平时夜里静默的天花板"，超过 1.5 倍且连续两格才标记异常。</li>
+          <li><b>看不到的情况</b> —— 用蜂窝流量、离线看本地视频、屏幕亮着没联网，这三种路由器无法感知。</li>
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= 设备 ================= -->
+  <div data-pane="dev" style="display:none">
+    <section class="kw-card">
+      <h3>设备与统计方式</h3>
+      <p class="kw-note">
+        「完整」记录到域名级，「摘要」只记总量（适合摄像头、插座这类 IoT），「忽略」完全不记。修改后立即生效。
+      </p>
+      <table class="kw-tbl" id="dev-tbl" style="margin-top:10px"></table>
+    </section>
+  </div>
+
+  <!-- ================= 系统 ================= -->
+  <div data-pane="sys" style="display:none">
+    <div class="kw-kpis" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kw-kpi"><div class="k">CPU 占用</div><div class="v num" id="s-cpu">—</div><div class="s" id="s-load">—</div></div>
+      <div class="kw-kpi"><div class="k">CPU 温度</div><div class="v num" id="s-tc">—</div><div class="s" id="s-tc-s">本机常态 68–72 °C</div></div>
+      <div class="kw-kpi"><div class="k">内存占用</div><div class="v num" id="s-mem">—</div><div class="s">总 233 MB</div></div>
+    </div>
+    <section class="kw-card">
+      <h3>CPU 使用率<span class="sub"><span class="kw-seg" id="sys-rng" style="transform:scale(.95)">
+        <button data-w="1h" class="on">1 小时</button><button data-w="24h">24 小时</button><button data-w="7d">7 天</button>
+      </span></span></h3>
+      <div id="sys-cpu" class="kw-chart" style="height:190px"></div>
+    </section>
+    <section class="kw-card">
+      <h3>温度<span class="sub">CPU 热点 / 2.4G / 5G</span></h3>
+      <div id="sys-temp" class="kw-chart" style="height:200px"></div>
+      <p class="kw-note">射频温度有热惯性，约滞后 3 分钟，只看趋势；CPU 与温度刻意拆成两张图，避免双 Y 轴造成的误读。</p>
+    </section>
+  </div>
+</div>
+
+<script>
+//<![CDATA[
+(function(){
+  var API = "<%=url('admin/kidwatch_api/call')%>";
+  var CATC = {video:'#D85A30',game:'#7F77DD',social:'#378ADD',study:'#1D9E75',shop:'#E8A33D',
+              music:'#C05BA8',novel:'#E2607E',news:'#5F6B7A',tool:'#B4B2A9',other:'#8A8F98'};
+  var CATN = {video:'视频',game:'游戏',social:'社交',study:'学习',shop:'购物',
+              music:'音乐',novel:'小说',news:'资讯',tool:'工具',other:'未分类'};
+  var CATORDER = ['video','game','music','novel','social','study','shop','news','tool','other'];
+
+  var S = { range:'today', mac:'all', tab:'ov', day:0, met:'dur', cat:'all', q:'',
+            page:0, pageSize:50, hours:null, list:null, devs:[], nightDays:[] };
+
+  function isDark(){
+    var a = document.documentElement.getAttribute('data-darkmode') ||
+            document.body.getAttribute('data-darkmode');
+    return a === 'true';
+  }
+  function ink(){ return isDark() ? '#e5e7eb' : '#111827'; }
+  function dim(){ return isDark() ? '#9aa3b2' : '#6b7280'; }
+  function line(){ return isDark() ? 'rgba(255,255,255,.14)' : 'rgba(0,0,0,.10)'; }
+  function soft(){ return isDark() ? 'rgba(255,255,255,.06)' : '#f6f7f9'; }
+
+  function fmtDur(s){
+    s = Math.round(s||0);
+    if (s < 60) return s + ' 秒';
+    if (s < 3600) return Math.floor(s/60) + ' 分' + (s%60 ? ' ' + (s%60) + ' 秒' : '');
+    var h = Math.floor(s/3600), m = Math.round((s%3600)/60);
+    return h + ' 小时' + (m ? ' ' + m + ' 分' : '');
+  }
+  function fmtH(s){
+    s = Math.round(s||0);
+    if (s < 60) return s + 's';
+    if (s < 3600) return Math.round(s/60) + 'm';
+    var h = Math.floor(s/3600), m = Math.round((s%3600)/60);
+    return h + 'h' + (m ? m + 'm' : '');
+  }
+  function fmtBy(b){
+    b = b||0;
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(0) + ' KB';
+    if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
+    return (b/1073741824).toFixed(2) + ' GB';
+  }
+  function hhmm(ts){
+    var d = new Date(ts*1000);
+    return ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
+  }
+  function mmdd(ts){
+    var d = new Date(ts*1000);
+    return (d.getMonth()+1) + '/' + d.getDate();
+  }
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function api(params, cb){
+    var q = $.extend({}, params);
+    $.getJSON(API, q).done(function(d){ cb(null, d||[]); })
+      .fail(function(){ cb('err'); });
+  }
+  function siteLabel(name, dom){
+    if (name) return esc(name) + '<span class="dom">' + esc(dom) + '</span>';
+    return esc(dom || '未识别');
+  }
+  function catTag(c){
+    c = c || 'other';
+    var col = CATC[c] || CATC.other;
+    return '<span class="cat" style="color:'+col+';border-color:'+col+'33;background:'+col+'14">'+(CATN[c]||'未分类')+'</span>';
+  }
+
+  /* ---------------- 设备下拉 ---------------- */
+  function loadDevs(cb){
+    api({fn:'devs'}, function(e, d){
+      S.devs = (d||[]).filter(function(x){ return x.mode !== 'ignore'; });
+      var sel = $('#kw-dev');
+      var cur = S.mac;
+      var html = '<option value="all">全部设备</option>';
+      S.devs.forEach(function(v){
+        html += '<option value="'+esc(v.mac)+'">'+esc(v.name)+'</option>';
+      });
+      sel.html(html).val(cur);
+      if (cb) cb();
+    });
+  }
+
+  /* ---------------- 概览 ---------------- */
+  function loadOverview(){
+    api({fn:'overview', range:S.range, mac:S.mac}, function(e, d){
+      var o = (d && d[0]) || {};
+      $('#k-dur').text(fmtDur(o.dur));
+      $('#k-by').text(fmtBy(o.by));
+      $('#k-site').text(o.sites || 0);
+      $('#k-top').text(o.top_name || o.top_dom || '—');
+      $('#k-top-s').text(o.top_val ? (' ' + (S.met==='by' ? fmtBy(o.top_val) : fmtDur(o.top_val))) : '这段时间还没有记录');
+    });
+
+    api({fn:'cats', range:S.range, mac:S.mac}, function(e, d){
+      var rows = (d||[]).filter(function(x){ return x.dur > 0 || x.by > 0; });
+      rows.sort(function(a,b){ return (b.dur||0)-(a.dur||0); });
+      var tot = rows.reduce(function(s,x){ return s + (x.dur||0); }, 0);
+      if (!rows.length || tot <= 0){
+        $('#ov-catbar').html('');
+        $('#ov-catlegend').html('<span>这段时间还没有可用的记录</span>');
+        return;
+      }
+      var bar = '', leg = '';
+      rows.forEach(function(x){
+        var p = (x.dur||0) / tot * 100;
+        var col = CATC[x.cat] || CATC.other;
+        bar += '<span style="width:'+p.toFixed(2)+'%;background:'+col+'" title="'+(CATN[x.cat]||'')+' '+fmtDur(x.dur)+'"></span>';
+        leg += '<span><i style="background:'+col+'"></i>'+(CATN[x.cat]||'未分类')+'<b>'+fmtH(x.dur)+'</b><span> · '+p.toFixed(0)+'%</span></span>';
+      });
+      $('#ov-catbar').html(bar);
+      $('#ov-catlegend').html(leg);
+    });
+
+    api({fn:'hours', range:S.range, mac:S.mac}, function(e, d){
+      S.hours = d || [];
+      drawHours();
+    });
+
+    api({fn:'top', range:S.range, mac:S.mac, met:'dur', lim:10}, function(e, d){
+      var rows = d || [];
+      if (!rows.length){ $('#ov-top').html('<tbody><tr><td class="kw-empty">暂无记录</td></tr></tbody>'); return; }
+      var max = Math.max.apply(null, rows.map(function(x){ return x.dur||0; }).concat([1]));
+      var h = '<thead><tr><th>网站</th><th>类目</th><th style="width:34%">时长占比</th><th class="r">时长</th><th class="r">流量</th></tr></thead><tbody>';
+      rows.forEach(function(x){
+        var p = (x.dur||0)/max*100;
+        var col = CATC[x.cat] || CATC.other;
+        h += '<tr><td>'+siteLabel(x.name, x.dom)+'</td><td>'+catTag(x.cat)+'</td>'+
+             '<td><div class="bar"><i style="width:'+p.toFixed(1)+'%;background:'+col+'"></i></div></td>'+
+             '<td class="r num">'+fmtDur(x.dur)+'</td><td class="r num">'+fmtBy(x.by)+'</td></tr>';
+      });
+      $('#ov-top').html(h + '</tbody>');
+    });
+  }
+
+  var hoursChart = null;
+  function drawHours(){
+    var el = document.getElementById('ov-hours');
+    if (!el) return;
+    if (!hoursChart) hoursChart = echarts.init(el, null, {renderer:'svg'});
+    var rows = S.hours || [];
+    var cats = {};
+    var data = [];
+    for (var i=0;i<24;i++) data.push({});
+    rows.forEach(function(r){
+      var h = +r.h;
+      if (h<0||h>23) return;
+      cats[r.cat] = 1;
+      data[h][r.cat] = (data[h][r.cat]||0) + (r.dur||0)/60;   // 分钟
+    });
+    var series = [];
+    CATORDER.forEach(function(c){
+      if (!cats[c]) return;
+      series.push({
+        name: CATN[c], type:'bar', stack:'h', barMaxWidth:16,
+        itemStyle:{color:CATC[c], borderWidth:0},
+        emphasis:{focus:'series'},
+        data: data.map(function(x){ return +(x[c]||0).toFixed(1); })
+      });
+    });
+    var lbl = []; for (var k=0;k<24;k++) lbl.push(k+':00');
+    if (!series.length){
+      el.innerHTML = '<div class="kw-empty">这段时间还没有记录</div>';
+      if (hoursChart) { hoursChart.dispose(); hoursChart = null; }
+      return;
+    }
+    hoursChart.setOption({
+      backgroundColor:'transparent',
+      grid:{left:2,right:6,top:12,bottom:2,containLabel:true},
+      tooltip:{trigger:'axis', axisPointer:{type:'shadow'},
+        backgroundColor:isDark()?'#1f2430':'#fff', borderColor:line(), textStyle:{color:ink(),fontSize:12},
+        formatter:function(ps){
+          var s = ps[0].axisValue + '<br/>';
+          ps.slice().reverse().forEach(function(p){
+            if (p.value>0) s += p.marker + p.seriesName + ' ' + p.value.toFixed(0) + ' 分<br/>';
+          });
+          return s;
+        }},
+      legend:{show:false},
+      xAxis:{type:'category', data:lbl, axisLine:{lineStyle:{color:line()}}, axisTick:{show:false},
+             axisLabel:{color:dim(), fontSize:10, interval:5}},
+      yAxis:{type:'value', min:0, name:'分钟', nameTextStyle:{color:dim(),fontSize:10,align:'left'},
+             axisLabel:{color:dim(), fontSize:10}, splitLine:{lineStyle:{color:line()}}, axisLine:{show:false}},
+      series:series
+    }, true);
+    hoursChart.resize();
+  }
+
+  /* ---------------- 网站明细 ---------------- */
+  function loadWeb(){
+    var p = {fn:'list', range:S.range, mac:S.mac, met:S.met, lim:S.pageSize, off:S.page*S.pageSize};
+    if (S.cat!=='all') p.cat = S.cat;
+    if (S.q) p.q = S.q;
+    api(p, function(e, d){
+      var rows = (d && d.rows) || [];
+      var total = (d && d.total) || 0;
+      S.list = rows;
+      var h = '<thead><tr><th>日期</th><th>设备</th><th>网站</th><th>类目</th>'+
+              '<th class="r">时长</th><th class="r">次数</th><th class="r">流量</th></tr></thead><tbody>';
+      if (!rows.length){
+        h += '<tr><td colspan="7" class="kw-empty">没有匹配的记录</td></tr>';
+      } else {
+        rows.forEach(function(x){
+          h += '<tr class="roww" data-dom="'+esc(x.dom)+'" data-day="'+x.day+'" data-mac="'+esc(x.mac)+'">'+
+               '<td class="num">'+mmdd(x.day)+'</td>'+
+               '<td>'+esc(x.who)+'</td>'+
+               '<td>'+siteLabel(x.name, x.dom)+'</td>'+
+               '<td>'+catTag(x.cat)+'</td>'+
+               '<td class="r num">'+fmtDur(x.dur)+'</td>'+
+               '<td class="r num">'+(x.n||0)+'</td>'+
+               '<td class="r num">'+fmtBy(x.by)+'</td></tr>';
+        });
+      }
+      $('#web-tbl').html(h + '</tbody>');
+      $('#web-total').text('共 ' + total + ' 条');
+      var pages = Math.max(1, Math.ceil(total / S.pageSize));
+      $('#web-page').text((S.page+1) + ' / ' + pages);
+      $('#web-prev').prop('disabled', S.page <= 0);
+      $('#web-next').prop('disabled', S.page >= pages-1);
+      $('#web-drill').removeClass('on').empty();
+    });
+  }
+
+  function drill(dom, day, mac){
+    var d = $('#web-drill').addClass('on').html('<div class="kw-tip">读取中…</div>');
+    api({fn:'sess', day:day, dom:dom, mac:mac}, function(e, rows){
+      rows = rows || [];
+      if (!rows.length){ d.html('<div class="kw-tip">这条记录没有明细（可能已超过 14 天保留期）</div>'); return; }
+      var d0 = new Date(day*1000); d0.setHours(0,0,0,0);
+      var base = Math.floor(d0.getTime()/1000);
+      var bars = '';
+      rows.forEach(function(s){
+        var l = (s.ts0 - base)/86400*100, w = Math.max(0.15, (s.ts1-s.ts0)/86400*100);
+        if (l<0) l=0; if (l>100) l=100;
+        bars += '<i style="left:'+l.toFixed(3)+'%;width:'+Math.min(w,100-l).toFixed(3)+'%" title="'+
+                hhmm(s.ts0)+'–'+hhmm(s.ts1)+' · '+fmtDur(s.dur)+' · '+fmtBy((s.up||0)+(s.dn||0))+'"></i>';
+      });
+      var list = rows.slice(0, 14).map(function(s){
+        return hhmm(s.ts0)+'–'+hhmm(s.ts1)+' · '+fmtDur(s.dur)+' · 上行 '+fmtBy(s.up)+' / 下行 '+fmtBy(s.dn);
+      }).join('<br/>');
+      d.html('<div style="font-size:13px;font-weight:600">'+esc(dom||'未识别')+' 在 '+mmdd(day)+' 的使用时间线</div>'+
+             '<div class="kw-tl">'+bars+'</div>'+
+             '<div class="kw-tlax"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>'+
+             '<div class="kw-tllist">'+list+(rows.length>14?'<br/>… 共 '+rows.length+' 段':'')+'</div>');
+    });
+  }
+
+  /* ---------------- 夜间 ---------------- */
+  function nightRange(day){
+    // day = 当天 0 点；窗口 22:30 -> 次日 06:00
+    return { a: day + 22*3600 + 1800, b: day + 86400 + 6*3600 };
+  }
+
+  function score(w, base){
+    var air = (w.air||0) / 300000;                 // airtime 占比（5 分钟窗）
+    var s = 0;
+    s += 0.35 * Math.min(air/0.15, 1);
+    s += 0.25 * Math.min((w.fl||0)/40, 1);
+    s += 0.15 * Math.min((w.dq||0)/30, 1);
+    s += 0.15 * Math.min((w.nd||0)/10, 1);
+    var by = w.by||0, ent = w.ent||0;
+    s += 0.10 * (by > 0 ? Math.min(ent/by, 1) : 0);
+    return Math.round(s*100);
+  }
+  function band(sc){ return sc<20?0: sc<45?1: sc<70?2: sc<85?3:4; }
+  function bandColor(b){
+    // 单色相（#D85A30）5 级递增，避免彩虹色阶
+    var base = isDark() ? '#D85A30' : '#D85A30';
+    var a = [0.10,0.28,0.48,0.70,0.95][b];
+    return hexA(base, a);
+  }
+  function hexA(hex, a){
+    var r = parseInt(hex.substr(1,2),16), g = parseInt(hex.substr(3,2),16), b = parseInt(hex.substr(5,2),16);
+    return 'rgba('+r+','+g+','+b+','+a+')';
+  }
+
+  function loadNight(){
+    var day = S.day || (function(){ var d = new Date(); d.setHours(0,0,0,0); return d.getTime()/1000; })();
+    S.day = day;
+    renderDaySelect();
+    api({fn:'night', day:day, days:1, mac:S.mac}, function(e, rows){
+      rows = rows || [];
+      var map = {};   // mac -> {ts: row}
+      rows.forEach(function(r){
+        (map[r.mac] = map[r.mac] || {})[r.ts] = r;
+      });
+      var rng = nightRange(day);
+      var slots = [];
+      for (var t = rng.a; t < rng.b; t += 300) slots.push(t);
+
+      var devs = S.devs.slice();
+      if (S.mac !== 'all') devs = devs.filter(function(d){ return d.mac === S.mac; });
+
+      var body = '';
+      var anyData = false;
+      devs.forEach(function(dv){
+        var rc = map[dv.mac] || {};
+        var cells = '';
+        var peak = 0;
+        slots.forEach(function(t){
+          var w = rc[t];
+          if (!w || (!w.air && !w.by && !w.fl)){
+            cells += '<i class="q" title="'+hhmm(t)+' 无记录"></i>';
+            return;
+          }
+          anyData = true;
+          var sc = score(w);
+          if (sc > peak) peak = sc;
+          cells += '<i style="background:'+bandColor(band(sc))+'" title="'+hhmm(t)+' 活跃度 '+sc+
+                   '｜空口 '+(w.air/1000).toFixed(0)+'s｜连接 '+w.fl+'｜域名 '+w.nd+'｜'+fmtBy(w.by)+'"></i>';
+        });
+        body += '<div class="kw-nightrow"><div class="nm" title="'+esc(dv.name)+'">'+esc(dv.name)+'</div>'+
+                '<div class="kw-nstrip">'+cells+'</div>'+
+                '<div class="kw-zoom">'+(peak?('峰 '+peak):'静默')+'</div></div>';
+      });
+      $('#night-body').html(body || '<div class="kw-empty">没有可显示的设备</div>');
+      $('#night-ax').html('<span>22:30</span><span>00:00</span><span>02:00</span><span>04:00</span><span>06:00</span>');
+      $('#night-legend').html(
+        [0,1,2,3,4].map(function(b){ return '<span><i style="background:'+bandColor(b)+'"></i>'+
+          ['静默','轻微','活跃','重度','极高'][b]+'</span>'; }).join('') +
+        '<span style="margin-left:auto">深色 = 真的在用，不是流量大小</span>');
+    });
+
+    // 7 晚热力图
+    api({fn:'night', day:day, days:7, mac:S.mac}, function(e, rows){
+      rows = rows || [];
+      var buckets = {};
+      rows.forEach(function(r){
+        var key = Math.floor(r.ts/1800)*1800;   // 30 分钟一格
+        buckets[key] = Math.max(buckets[key] || 0, score(r));
+      });
+      var days = [];
+      for (var i=6;i>=0;i--) days.push(day - i*86400);
+      var html = '';
+      days.forEach(function(d){
+        var cells = '';
+        for (var t = d+22*3600+1800; t < d+86400+6*3600; t += 1800){
+          var sc = buckets[t];
+          cells += sc == null
+            ? '<i title="'+mmdd(t)+' '+hhmm(t)+'"></i>'
+            : '<i style="background:'+bandColor(band(sc))+'" title="'+mmdd(t)+' '+hhmm(t)+' 活跃度 '+sc+'"></i>';
+        }
+        html += '<div style="color:var(--kw-dim)">'+mmdd(d)+' 夜</div><div class="kw-heatrow">'+cells+'</div>';
+      });
+      $('#night-heat').html(html || '<div class="kw-empty">暂无数据</div>');
+    });
+  }
+
+  function renderDaySelect(){
+    var sel = $('#night-day');
+    if (sel.data('built')) { sel.val(S.day); return; }
+    var d = new Date(); d.setHours(0,0,0,0);
+    var h = '';
+    for (var i=0;i<14;i++){
+      var ts = Math.floor(d.getTime()/1000) - i*86400;
+      h += '<option value="'+ts+'">'+(i===0?'昨晚':mmdd(ts)+' 夜')+'</option>';
+    }
+    sel.html(h).data('built',1).val(S.day);
+  }
+
+  /* ---------------- 设备 ---------------- */
+  function loadDevTab(){
+    api({fn:'devs'}, function(e, d){
+      var rows = d || [];
+      var h = '<thead><tr><th>设备</th><th>角色</th><th>统计</th><th class="r">今日时长</th><th class="r">今日流量</th><th class="r">最后活动</th></tr></thead><tbody>';
+      if (!rows.length){ h += '<tr><td colspan="6" class="kw-empty">还没有任何设备记录</td></tr>'; }
+      rows.forEach(function(x){
+        var last = x.last ? hhmm(x.last) : '—';
+        h += '<tr data-mac="'+esc(x.mac)+'">'+
+          '<td><input class="kw-devin" data-k="alias" value="'+esc(x.alias||'')+'" placeholder="'+esc(x.host||x.mac)+'">'+
+              '<div class="dom" style="margin-left:5px">'+esc(x.mac)+'</div></td>'+
+          '<td><select class="kw-devin" data-k="role">'+
+              ['child','adult','guest','iot'].map(function(r){
+                return '<option value="'+r+'"'+(x.role===r?' selected':'')+'>'+
+                  ({child:'孩子',adult:'大人',guest:'访客',iot:'智能设备'})[r]+'</option>';
+              }).join('')+'</select></td>'+
+          '<td><select class="kw-devin" data-k="mode">'+
+              ['full','summary','ignore'].map(function(r){
+                return '<option value="'+r+'"'+(x.mode===r?' selected':'')+'>'+
+                  ({full:'完整',summary:'仅总量',ignore:'忽略'})[r]+'</option>';
+              }).join('')+'</select></td>'+
+          '<td class="r num">'+fmtDur(x.dur)+'</td>'+
+          '<td class="r num">'+fmtBy(x.by)+'</td>'+
+          '<td class="r num">'+last+'</td></tr>';
+      });
+      $('#dev-tbl').html(h + '</tbody>');
+      $('#dev-tbl :input').on('change', function(){
+        var tr = $(this).closest('tr'), mac = tr.data('mac');
+        var k = $(this).data('k'), v = $(this).val();
+        api({fn:'setdev', mac:mac, key:k, val:v}, function(){
+          loadDevs();
+          if (k === 'mode') loadDevTab();
+        });
+      });
+    });
+  }
+
+  /* ---------------- 系统 ---------------- */
+  var cpuChart = null, tempChart = null, sysWin = '1h';
+  function loadSys(){
+    api({fn:'sys', win:sysWin}, function(e, rows){
+      rows = rows || [];
+      drawCpu(rows); drawTemp(rows);
+      if (rows.length){
+        var r = rows[rows.length-1];
+        $('#s-cpu').text((r.cpu||0).toFixed(1) + '%');
+        $('#s-load').text('负载 ' + (r.load||0).toFixed(2) + ' · 双核');
+        $('#s-tc').text((r.tc||0) + ' °C');
+        $('#s-mem').text((r.mem||0) + ' MB');
+      }
+    });
+  }
+  function axisCommon(rows){
+    return {
+      axisLine:{lineStyle:{color:line()}},
+      axisLabel:{color:dim(), fontSize:10, hideOverlap:true},
+      splitLine:{lineStyle:{color:line()}}
+    };
+  }
+  function drawCpu(rows){
+    var el = document.getElementById('sys-cpu');
+    if (!cpuChart) cpuChart = echarts.init(el, null, {renderer:'svg'});
+    if (!rows.length){ el.innerHTML = '<div class="kw-empty">还没有采样数据（每分钟一个点）</div>'; return; }
+    var xs = rows.map(function(r){ return hhmm(r.ts); });
+    var ys = rows.map(function(r){ return +(r.cpu||0).toFixed(1); });
+    cpuChart.setOption({
+      backgroundColor:'transparent',
+      grid:{left:2,right:8,top:14,bottom:2,containLabel:true},
+      tooltip:{trigger:'axis', backgroundColor:isDark()?'#1f2430':'#fff', borderColor:line(),
+               textStyle:{color:ink(),fontSize:12}, valueFormatter:function(v){ return v+' %'; }},
+      xAxis:$.extend({type:'category', data:xs, boundaryGap:false}, axisCommon(rows)),
+      yAxis:$.extend({type:'value', min:0, max:function(v){ return Math.max(20, Math.ceil(v.max*1.25/10)*10); },
+                      axisLabel:{color:dim(),fontSize:10,formatter:'{value}%'}}, axisCommon(rows)),
+      series:[{type:'line', data:ys, smooth:false, showSymbol:false, lineStyle:{width:1.6, color:'#378ADD'},
+               areaStyle:{color:hexA('#378ADD', 0.13)}, itemStyle:{color:'#378ADD'}}]
+    }, true);
+    cpuChart.resize();
+  }
+  function drawTemp(rows){
+    var el = document.getElementById('sys-temp');
+    if (!tempChart) tempChart = echarts.init(el, null, {renderer:'svg'});
+    if (!rows.length){ el.innerHTML = '<div class="kw-empty">还没有采样数据</div>'; return; }
+    var xs = rows.map(function(r){ return hhmm(r.ts); });
+    var f = function(k){ return rows.map(function(r){ return r[k] ? +r[k] : null; }); };
+    tempChart.setOption({
+      backgroundColor:'transparent',
+      grid:{left:2,right:8,top:16,bottom:2,containLabel:true},
+      tooltip:{trigger:'axis', backgroundColor:isDark()?'#1f2430':'#fff', borderColor:line(),
+               textStyle:{color:ink(),fontSize:12}, valueFormatter:function(v){ return v+' °C'; }},
+      legend:{show:false},
+      xAxis:$.extend({type:'category', data:xs, boundaryGap:false}, axisCommon(rows)),
+      yAxis:$.extend({type:'value', min:45, max:92, axisLabel:{color:dim(),fontSize:10,formatter:'{value}°'}}, axisCommon(rows)),
+      series:[
+        {name:'CPU', type:'line', data:f('tc'), showSymbol:false, lineStyle:{width:1.8,color:'#BA7517'}, itemStyle:{color:'#BA7517'}},
+        {name:'2.4G', type:'line', data:f('w24'), showSymbol:false, lineStyle:{width:1.3,color:'#888780',type:'dashed'}, itemStyle:{color:'#888780'}},
+        {name:'5G', type:'line', data:f('w5'), showSymbol:false, lineStyle:{width:1.3,color:'#5F5E5A'}, itemStyle:{color:'#5F5E5A'}}
+      ]
+    }, true);
+    tempChart.resize();
+  }
+
+  /* ---------------- 交互 ---------------- */
+  function refresh(force){
+    var r = S.range, macLabel = S.mac === 'all' ? '全部设备' : ($('#kw-dev option:selected').text() || '');
+    var rl = {today:'今天',yesterday:'昨天','7d':'近 7 天','30d':'近 30 天'}[r] || r;
+    $('#kw-hint').text(rl + ' · ' + macLabel + ' · 数据每 10 秒采集一次');
+    if (S.tab === 'ov') loadOverview();
+    if (S.tab === 'web') loadWeb();
+    if (S.tab === 'night') loadNight();
+    if (S.tab === 'dev') loadDevTab();
+    if (S.tab === 'sys') loadSys();
+  }
+
+  $('#kw-tabs').on('click', 'button', function(){
+    var t = $(this).data('t');
+    S.tab = t;
+    $('#kw-tabs button').removeClass('on'); $(this).addClass('on');
+    $('#kw [data-pane]').hide(); $('#kw [data-pane="'+t+'"]').show();
+    refresh();
+  });
+  $('#kw-rng').on('click', 'button', function(){
+    S.range = $(this).data('r');
+    $('#kw-rng button').removeClass('on'); $(this).addClass('on');
+    S.page = 0;
+    refresh();
+  });
+  $('#kw-dev').on('change', function(){ S.mac = $(this).val(); S.page = 0; refresh(); });
+  $('#kw-refresh').on('click', function(){ refresh(); loadDevs(); });
+  $('#web-met').on('click', 'button', function(){
+    S.met = $(this).data('m');
+    $('#web-met button').removeClass('on'); $(this).addClass('on');
+    S.page = 0; loadWeb();
+  });
+  $('#web-cat').on('change', function(){ S.cat = $(this).val(); S.page = 0; loadWeb(); });
+  var qt = null;
+  $('#web-q').on('input', function(){
+    var v = $(this).val().trim();
+    clearTimeout(qt); qt = setTimeout(function(){ S.q = v; S.page = 0; loadWeb(); }, 350);
+  });
+  $('#web-prev').on('click', function(){ if (S.page>0){ S.page--; loadWeb(); } });
+  $('#web-next').on('click', function(){ S.page++; loadWeb(); });
+  $('#web-tbl').on('click', 'tr.roww', function(){
+    var d = $(this).data('dom'), day = $(this).data('day'), mac = $(this).data('mac');
+    drill(String(d), day, mac);
+  });
+  $('#web-csv').on('click', function(){
+    var rows = S.list || [];
+    if (!rows.length) return;
+    var head = '日期,设备,网站,域名,类目,时长秒,次数,流量字节\n';
+    var body = rows.map(function(x){
+      return [mmdd(x.day), x.who, x.name||'', x.dom||'', CATN[x.cat]||'', x.dur||0, x.n||0, x.by||0]
+        .map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(',');
+    }).join('\n');
+    var blob = new Blob(['\ufeff'+head+body], {type:'text/csv;charset=utf-8'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'kidwatch-' + S.range + '.csv';
+    a.click();
+  });
+  $('#night-day').on('change', function(){ S.day = +$(this).val(); loadNight(); });
+  $('#sys-rng').on('click', 'button', function(){
+    sysWin = $(this).data('w');
+    $('#sys-rng button').removeClass('on'); $(this).addClass('on');
+    loadSys();
+  });
+  $(window).on('resize', function(){
+    [hoursChart, cpuChart, tempChart].forEach(function(c){ if (c) c.resize(); });
+  });
+
+  // 启动
+  loadDevs(function(){
+    var v = window.localStorage ? localStorage.getItem('kw.mac') : null;
+    if (v && $('#kw-dev option[value="'+v+'"]').length) { S.mac = v; $('#kw-dev').val(v); }
+    refresh();
+  });
+  $('#kw-dev').on('change', function(){
+    try { localStorage.setItem('kw.mac', $(this).val()); } catch(e){}
+  });
+})();
+//]]>
+</script>
+<%+footer%>

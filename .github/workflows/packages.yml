@@ -1,0 +1,91 @@
+name: build-packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk_version:
+        description: "OpenWrt SDK 版本（对应 FanchmWrt 基线）"
+        required: true
+        default: "25.12.4"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: 检出本仓库
+        uses: actions/checkout@v4
+
+      - name: 下载并解压 SDK
+        run: |
+          set -e
+          VER="${{ inputs.sdk_version }}"
+          BASE="https://downloads.openwrt.org/releases/${VER}/targets/mediatek/filogic"
+          SDK="openwrt-sdk-${VER}-mediatek-filogic_gcc-14.3.0_musl.Linux-x86_64"
+          echo "SDK=${SDK}"
+          curl -fL --retry 3 -o sdk.tar.zst "${BASE}/${SDK}.tar.zst"
+          mkdir -p sdk
+          tar --zstd -xf sdk.tar.zst -C sdk --strip-components=1
+          ls sdk | head -20
+          df -h /
+
+      - name: 放入自定义软件包
+        run: |
+          cp -r packages/kidwatch packages/luci-app-kidwatch sdk/package/
+          ls -la sdk/package/kidwatch sdk/package/luci-app-kidwatch
+
+      - name: 更新 feeds
+        run: |
+          cd sdk
+          ./scripts/feeds update -a >/dev/null
+          ./scripts/feeds install -a >/dev/null
+          echo "feeds installed"
+
+      - name: 生成配置
+        run: |
+          cd sdk
+          cat > .config <<'EOC'
+          CONFIG_TARGET_mediatek=y
+          CONFIG_TARGET_mediatek_filogic=y
+          CONFIG_TARGET_MULTI_PROFILE=n
+          CONFIG_TARGET_mediatek_filogic_DEVICE_h3c_magic-nx30-pro=y
+          CONFIG_PACKAGE_kidwatch=m
+          CONFIG_PACKAGE_luci-app-kidwatch=m
+          EOC
+          make defconfig
+          echo "=== 关键配置 ==="
+          grep -E "CONFIG_PACKAGE_(kidwatch|luci-app-kidwatch)" .config || {
+            echo "ERROR: 自定义包未被识别"; exit 1; }
+
+      - name: 编译软件包
+        run: |
+          cd sdk
+          make package/kidwatch/compile package/luci-app-kidwatch/compile -j"$(nproc)" V=s 2>&1 | tail -80
+          echo "=== 产物 ==="
+          find bin/packages -name '*.apk' -o -name '*.ipk' | sort
+
+      - name: 上传产物
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kidwatch-apk-${{ inputs.sdk_version }}
+          path: |
+            sdk/bin/packages/**/*.apk
+            sdk/bin/packages/**/*.ipk
+          if-no-files-found: error
+          retention-days: 60
+
+      - name: 失败时上传日志
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ github.run_id }}
+          path: |
+            sdk/.config
+            sdk/logs/
+          if-no-files-found: ignore
+          retention-days: 7

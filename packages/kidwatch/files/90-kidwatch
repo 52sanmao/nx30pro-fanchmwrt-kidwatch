@@ -1,0 +1,35 @@
+#!/bin/sh
+# kidwatch 首次安装：打开 dnsmasq 查询日志，供域名归属使用
+[ -f /etc/config/dhcp ] || exit 0
+
+. /lib/functions.sh 2>/dev/null
+
+old_q=$(uci -q get dhcp.@dnsmasq[0].logqueries)
+old_f=$(uci -q get dhcp.@dnsmasq[0].logfacility)
+
+# fanchmwrt 默认在 /etc/dnsmasq.conf 写 log-facility=/dev/null 静音，
+# 与 uci 的 logfacility 重复会让 dnsmasq 启动失败，这里先清掉。
+if [ -f /etc/dnsmasq.conf ] && grep -q '^log-facility' /etc/dnsmasq.conf; then
+	cp -f /etc/dnsmasq.conf /etc/dnsmasq.conf.kidwatch-bak 2>/dev/null
+	sed -i '/^log-facility/d' /etc/dnsmasq.conf
+	changed=1
+fi
+
+[ "$old_q" = "1" ] || changed=1
+[ "$old_f" = "/tmp/kidwatch-dnsmasq.log" ] || changed=1
+
+uci -q set dhcp.@dnsmasq[0].logqueries='1'
+uci -q set dhcp.@dnsmasq[0].logfacility='/tmp/kidwatch-dnsmasq.log'
+uci -q commit dhcp
+
+mkdir -p /tmp/kidwatch /etc/kidwatch
+[ -e /tmp/kidwatch-dnsmasq.log ] || : > /tmp/kidwatch-dnsmasq.log
+
+# 只有配置真的变了才重启 dnsmasq，避免每次开机都打断一次 DNS
+[ -n "$changed" ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1
+
+# 采集服务与预备脚本入开机自启
+/etc/init.d/kidwatch-prep enable 2>/dev/null
+/etc/init.d/kidwatch enable 2>/dev/null
+
+exit 0

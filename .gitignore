@@ -1,0 +1,6 @@
+*.apk
+*.ipk
+sdk/
+openwrt/
+*.tar.zst
+out/
