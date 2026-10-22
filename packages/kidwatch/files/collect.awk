@@ -146,7 +146,7 @@ function find_hwmon(   c, line, nm, d) {
 }
 
 # ---------------- DNS ----------------
-function read_dns(now,   line, n, i, a, tok, cid, cli, nm, val, qi, ip) {
+function read_dns(now,   line, n, i, a, tok, cid, cli, nm, val, qi, ip, hit, h1, h2, old) {
     while ((getline line < DNSLOG) > 0) {
         dnspos += length(line) + 1
         if (index(line, " query[") == 0 && index(line, " reply ") == 0) continue
@@ -174,8 +174,21 @@ function read_dns(now,   line, n, i, a, tok, cid, cli, nm, val, qi, ip) {
             if (nm == "") nm = PEND[cid]
             if (nm == "") continue
             ip = normip(val)
-            IPDOM[ip] = nm
-            IPTS[ip]  = now
+            # CNAME 链的末端常是 CDN 域名（akadns.net 之类），会把客户端真正
+            # 想访问的站点盖掉。这里优先采用站点库认识的域名：
+            #   1) 这条 query 的原始域名（dnsmasq extra 模式下 clientid 一一对应）
+            #   2) reply 里的名字
+            h1 = libhit(PEND[cid])
+            h2 = libhit(nm)
+            hit = (h1 != "") ? h1 : h2
+            old = IPDOM[ip]
+            if (old == "" || now - IPTS[ip] > DNS_TTL) {
+                IPDOM[ip] = (hit != "") ? hit : nm
+                IPTS[ip]  = now
+            } else if (hit != "" && !(old in CAT)) {
+                IPDOM[ip] = hit
+                IPTS[ip]  = now
+            }
         }
     }
 }
@@ -247,16 +260,25 @@ function resolve(ip, now) {
     return bestdom(IPDOM[ip])
 }
 
-# 最长后缀命中站点库，否则退回 eTLD+1 启发式
-function bestdom(d,   t) {
+# 最长后缀命中站点库，命中不到返回空
+function libhit(d,   t) {
     d = tolower(d); sub(/\.$/, "", d)
-    if (index(d, ":")) return d
+    if (index(d, ":")) return ""
     t = d
     while (1) {
         if (t in CAT) return t
         if (!sub(/^[^.]+\./, "", t)) break
         if (t == "") break
     }
+    return ""
+}
+
+# 最长后缀命中站点库，否则退回 eTLD+1 启发式
+function bestdom(d,   h) {
+    d = tolower(d); sub(/\.$/, "", d)
+    if (index(d, ":")) return d
+    h = libhit(d)
+    if (h != "") return h
     return maindom(d)
 }
 
