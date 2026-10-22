@@ -408,7 +408,8 @@ case "$cmd" in
 	setdev)   do_setdev "$@" ;;
 	setsite)  do_setsite "$@" ;;
 	sethost)  do_sethost ;;
+	sites)    import_sites ;;
 	maint)    do_maint ;;
 	rotate)   do_rotate "${1:-}" ;;
-	*) echo "usage: kidwatch {init|collect|query|setdev|setsite|maint|rotate}" ;;
+	*) echo "usage: kidwatch {init|collect|query|setdev|setsite|sites|maint|rotate}" ;;
 esac

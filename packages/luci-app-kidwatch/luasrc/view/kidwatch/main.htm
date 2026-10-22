@@ -290,7 +290,7 @@
               cdn:'网络服务'};
   var CATORDER = ['video','game','music','novel','social','study','shop','news','tool','other','cdn'];
 
-  var S = { range:'today', mac:'all', tab:'ov', day:0, met:'dur', cat:'all', q:'',
+  var S = { range:'today', mac:'all', tab:'ov', day:0, met:'dur', cat:'all', q:'', listTotal:0,
             page:0, pageSize:50, hours:null, list:null, devs:[], nightDays:[] };
 
   function isDark(){
@@ -433,6 +433,12 @@
   function drawHours(){
     var el = document.getElementById('ov-hours');
     if (!el) return;
+    // 时段分布依赖 sess 明细（只留 14 天），30 天视图给不出真实的 24 小时分布
+    if (S.range === '30d'){
+      if (hoursChart) { hoursChart.dispose(); hoursChart = null; }
+      el.innerHTML = '<div class="kw-empty">30 天视图不显示时段分布<br><span style="font-size:12px">（明细只保留 14 天，选 7 天以内可看）</span></div>';
+      return;
+    }
     if (!hoursChart) hoursChart = echarts.init(el, null, {renderer:'svg'});
     var rows = S.hours || [];
     var cats = {};
@@ -492,6 +498,7 @@
       var rows = (d && d.rows) || [];
       var total = (d && d.total) || 0;
       S.list = rows;
+      S.listTotal = total;
       var h = '<thead><tr><th>日期</th><th>设备</th><th>网站</th><th>类目</th>'+
               '<th class="r">时长</th><th class="r">次数</th><th class="r">流量</th></tr></thead><tbody>';
       if (!rows.length){
@@ -815,18 +822,27 @@
     drill(String(d), day, mac);
   });
   $('#web-csv').on('click', function(){
-    var rows = S.list || [];
-    if (!rows.length) return;
-    var head = '日期,设备,网站,域名,类目,时长秒,次数,流量字节\n';
-    var body = rows.map(function(x){
-      return [mmdd(x.day), x.who, x.name||'', x.dom||'', CATN[x.cat]||'', x.dur||0, x.n||0, x.by||0]
-        .map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(',');
-    }).join('\n');
-    var blob = new Blob(['\ufeff'+head+body], {type:'text/csv;charset=utf-8'});
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'kidwatch-' + S.range + '.csv';
-    a.click();
+    // 导出的是"当前筛选条件下的全部记录"，不是当前这一页
+    var dump = function(rows){
+      if (!rows.length) return;
+      var head = '日期,设备,网站,域名,类目,时长秒,次数,流量字节\n';
+      var body = rows.map(function(x){
+        return [mmdd(x.day), x.who, x.name||'', x.dom||'', CATN[x.cat]||'', x.dur||0, x.n||0, x.by||0]
+          .map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(',');
+      }).join('\n');
+      var blob = new Blob(['\ufeff'+head+body], {type:'text/csv;charset=utf-8'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'kidwatch-' + S.range + '.csv';
+      a.click();
+    };
+    var have = (S.list||[]).length, total = S.listTotal || have;
+    if (total <= have) { dump(S.list||[]); return; }
+    var p = {fn:'list', range:S.range, mac:S.mac, met:S.met,
+             lim:Math.min(total, 5000), off:0};
+    if (S.cat!=='all') p.cat = S.cat;
+    if (S.q) p.q = S.q;
+    api(p, function(e, d){ dump((d && d.rows) || []); });
   });
   $('#night-day').on('change', function(){ S.day = +$(this).val(); loadNight(); });
   $('#sys-rng').on('click', 'button', function(){

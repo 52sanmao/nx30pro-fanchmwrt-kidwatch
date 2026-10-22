@@ -483,7 +483,7 @@ BEGIN {
         if (now - last_flush >= 60) {
             flush_pending(now, 0)
             check_log(now)
-            if (now - last_reload >= 300) { load_modes(); load_sites(); system("/usr/bin/kidwatch sethost >/dev/null 2>&1"); last_reload = now }
+            if (now - last_reload >= 300) { load_modes(); load_sites(); system("/usr/bin/kidwatch sethost >/dev/null 2>&1; /usr/bin/kidwatch sites >/dev/null 2>&1"); last_reload = now }
             if (now - last_maint >= 21600) { system("/usr/bin/kidwatch maint >/dev/null 2>&1"); last_maint = now }
             last_flush = now
         }
