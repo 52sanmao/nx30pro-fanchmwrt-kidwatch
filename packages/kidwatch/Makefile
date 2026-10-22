@@ -48,6 +48,9 @@ define Package/kidwatch/install
 	$(INSTALL_BIN)  ./files/kidwatch.prep   $(1)/etc/init.d/kidwatch-prep
 	$(INSTALL_DATA) ./files/kidwatch.config $(1)/etc/config/kidwatch
 	$(INSTALL_BIN)  ./files/90-kidwatch     $(1)/etc/uci-defaults/90-kidwatch
+	# 升级固件时保住历史数据（sysupgrade 默认只留 keep.d 里列出的文件）
+	$(INSTALL_DIR) $(1)/lib/upgrade/keep.d
+	$(INSTALL_DATA) ./files/kidwatch.keep   $(1)/lib/upgrade/keep.d/kidwatch
 endef
 
 define Package/kidwatch/postinst
