@@ -285,8 +285,7 @@ function addflow(mac, dom, t0, t1, up, dn, app, cat,   day, k, vk, s, e, b) {
     b = bkey(pbucket(t1))
     BMAC[b SUBSEP mac] = 1
     W_by[b SUBSEP mac]  += up + dn
-    if (cat == "video" || cat == "game" || cat == "social" || cat == "music" || cat == "novel")
-        W_ent[b SUBSEP mac] += up + dn
+    W_cat[b SUBSEP mac SUBSEP cat] += up + dn
     if (dom != "") W_dom[b SUBSEP mac SUBSEP dom] = 1
 }
 
@@ -316,7 +315,7 @@ function emit_sess(mac, dom, day, t0, t1, dur, up, dn, n, app) {
 }
 
 # ---------------- 5 分钟窗口 ----------------
-function flush_bucket(bts,   k, mac, a, nd, d, pre, nk) {
+function flush_bucket(bts,   k, mac, a, nd, d, pre, nk, c, z, ent) {
     pre = bkey(bts) SUBSEP
     # 先把 DNS 计数按 IP 归并到设备
     for (k in DCNT) {
@@ -332,14 +331,22 @@ function flush_bucket(bts,   k, mac, a, nd, d, pre, nk) {
         split(k, a, SUBSEP); mac = a[2]
         nd = 0
         for (d in W_dom) if (index(d, k SUBSEP) == 1) nd++
+        # 娱乐流量 = 视频/游戏/社交/音乐/小说的字节数之和（按类目累计，更准）
+        ent = 0
+        for (c in W_cat) {
+            if (index(c, k SUBSEP) != 1) continue
+            split(c, z, SUBSEP)
+            if (z[3] in ENT) ent += W_cat[c]
+        }
         prep()
         printf("INSERT OR REPLACE INTO win(ts,mac,air,on_s,fl,dq,by,ent,nd) VALUES(%d,%s,%d,%d,%d,%d,%d,%d,%d);\n",
                bts, q(mac), AIR[k] + 0, ON[k] + 0, FLW[k] + 0, DQ[k] + 0,
-               W_by[k] + 0, W_ent[k] + 0, nd) > SQLF
-        delete BMAC[k]; delete W_by[k]; delete W_ent[k]
+               W_by[k] + 0, ent, nd) > SQLF
+        delete BMAC[k]; delete W_by[k]
         delete AIR[k]; delete ON[k]; delete FLW[k]; delete DQ[k]
         nk++
     }
+    for (c in W_cat) if (index(c, pre) == 1) delete W_cat[c]
     for (d in W_dom) if (index(d, pre) == 1) delete W_dom[d]
     if (nk > 0) ndirty = 1
 }
@@ -427,6 +434,10 @@ BEGIN {
     DNS_TTL   = 7200
     AIR_EVERY = 60
     SYS_EVERY = 60
+
+    # 算作"娱乐"的类目（夜间守卫的 ent 指标）
+    split("video game social music novel", _e, " ")
+    for (_i = 1; _i <= 5; _i++) ENT[_e[_i]] = 1
 
     system("mkdir -p " TMP)
     load_sites(); load_modes(); find_radios(); find_hwmon()

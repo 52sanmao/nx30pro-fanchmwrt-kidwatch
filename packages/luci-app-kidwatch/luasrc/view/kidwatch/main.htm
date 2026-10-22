@@ -71,6 +71,8 @@
 #kw .kw-catlegend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
 #kw .kw-catlegend b{font-weight:600;margin-left:5px;font-variant-numeric:tabular-nums}
 #kw .kw-catlegend span{color:var(--kw-dim)}
+#kw .kw-catlegend .kw-cdnnote{width:100%;font-size:11px;opacity:.75;padding-top:2px}
+#kw .dim{color:var(--kw-dim);font-style:italic}
 
 /* 夜间 */
 #kw .kw-nightrow{display:grid;grid-template-columns:120px 1fr 92px;gap:10px;align-items:center;margin-bottom:6px}
@@ -167,7 +169,7 @@
     </div>
 
     <section class="kw-card">
-      <h3>最常去的网站<span class="sub" id="ov-top-sub">前 10 名</span></h3>
+      <h3>最常去的网站<span class="sub" id="ov-top-sub">前 10 名 · 不含 CDN/基础服务</span></h3>
       <table class="kw-tbl" id="ov-top"></table>
     </section>
   </div>
@@ -184,6 +186,7 @@
             <option value="shop">购物</option><option value="music">音乐</option>
             <option value="novel">小说</option><option value="news">资讯</option>
             <option value="tool">工具</option><option value="other">未分类</option>
+            <option value="cdn">网络服务</option>
           </select>
         </span>
       </h3>
@@ -280,10 +283,12 @@
 (function(){
   var API = "<%=url('admin/kidwatch_api/call')%>";
   var CATC = {video:'#D85A30',game:'#7F77DD',social:'#378ADD',study:'#1D9E75',shop:'#E8A33D',
-              music:'#C05BA8',novel:'#E2607E',news:'#5F6B7A',tool:'#B4B2A9',other:'#8A8F98'};
+              music:'#C05BA8',novel:'#E2607E',news:'#5F6B7A',tool:'#B4B2A9',other:'#8A8F98',
+              cdn:'#7C8794'};
   var CATN = {video:'视频',game:'游戏',social:'社交',study:'学习',shop:'购物',
-              music:'音乐',novel:'小说',news:'资讯',tool:'工具',other:'未分类'};
-  var CATORDER = ['video','game','music','novel','social','study','shop','news','tool','other'];
+              music:'音乐',novel:'小说',news:'资讯',tool:'工具',other:'未分类',
+              cdn:'网络服务'};
+  var CATORDER = ['video','game','music','novel','social','study','shop','news','tool','other','cdn'];
 
   var S = { range:'today', mac:'all', tab:'ov', day:0, met:'dur', cat:'all', q:'',
             page:0, pageSize:50, hours:null, list:null, devs:[], nightDays:[] };
@@ -338,8 +343,10 @@
       .fail(function(){ cb('err'); });
   }
   function siteLabel(name, dom){
+    // 没有域名 = 走 DNS 查不到的直连 IP（QUIC/缓存/长连接），如实说明
+    if (!dom) return '<span class="dim">直连 IP · 未识别</span>';
     if (name) return esc(name) + '<span class="dom">' + esc(dom) + '</span>';
-    return esc(dom || '未识别');
+    return esc(dom);
   }
   function catTag(c){
     c = c || 'other';
@@ -374,7 +381,11 @@
     });
 
     api({fn:'cats', range:S.range, mac:S.mac}, function(e, d){
-      var rows = (d||[]).filter(function(x){ return x.dur > 0 || x.by > 0; });
+      var all = (d||[]).filter(function(x){ return x.dur > 0 || x.by > 0; });
+      // CDN / 统计 / 云服务单独统计，不进分布图，只作脚注
+      var cdn = all.filter(function(x){ return x.cat === 'cdn'; })
+                   .reduce(function(s,x){ return s + (x.dur||0); }, 0);
+      var rows = all.filter(function(x){ return x.cat !== 'cdn'; });
       rows.sort(function(a,b){ return (b.dur||0)-(a.dur||0); });
       var tot = rows.reduce(function(s,x){ return s + (x.dur||0); }, 0);
       if (!rows.length || tot <= 0){
@@ -389,6 +400,10 @@
         bar += '<span style="width:'+p.toFixed(2)+'%;background:'+col+'" title="'+(CATN[x.cat]||'')+' '+fmtDur(x.dur)+'"></span>';
         leg += '<span><i style="background:'+col+'"></i>'+(CATN[x.cat]||'未分类')+'<b>'+fmtH(x.dur)+'</b><span> · '+p.toFixed(0)+'%</span></span>';
       });
+      var share = Math.round(cdn / (cdn + tot) * 100);
+      if (share >= 1){
+        leg += '<span class="kw-cdnnote">另有 '+share+'% 为 CDN / 基础服务流量，已从图中隐去</span>';
+      }
       $('#ov-catbar').html(bar);
       $('#ov-catlegend').html(leg);
     });
@@ -426,6 +441,7 @@
     rows.forEach(function(r){
       var h = +r.h;
       if (h<0||h>23) return;
+      if (r.cat === 'cdn') return;   // CDN/基础服务不进这张图，否则把真实节奏压平
       cats[r.cat] = 1;
       data[h][r.cat] = (data[h][r.cat]||0) + (r.dur||0)/60;   // 分钟
     });
@@ -555,8 +571,17 @@
     return 'rgba('+r+','+g+','+b+','+a+')';
   }
 
+  function midnightOf(d){ d = new Date(d); d.setHours(0,0,0,0); return Math.floor(d.getTime()/1000); }
+  // 22:30 之前，"今晚"还没开始，默认看昨晚（已经完整结束的那个窗口）
+  function lastNightDay(){
+    var now = new Date();
+    var m = now.getHours()*60 + now.getMinutes();
+    var t0 = midnightOf(now);
+    return m >= 22*60+30 ? t0 : t0 - 86400;
+  }
+
   function loadNight(){
-    var day = S.day || (function(){ var d = new Date(); d.setHours(0,0,0,0); return d.getTime()/1000; })();
+    var day = S.day || lastNightDay();
     S.day = day;
     renderDaySelect();
     api({fn:'night', day:day, days:1, mac:S.mac}, function(e, rows){
@@ -630,11 +655,16 @@
   function renderDaySelect(){
     var sel = $('#night-day');
     if (sel.data('built')) { sel.val(S.day); return; }
-    var d = new Date(); d.setHours(0,0,0,0);
+    var t0 = midnightOf(new Date());
+    var after = (new Date().getHours()*60 + new Date().getMinutes()) >= 22*60+30;
     var h = '';
     for (var i=0;i<14;i++){
-      var ts = Math.floor(d.getTime()/1000) - i*86400;
-      h += '<option value="'+ts+'">'+(i===0?'昨晚':mmdd(ts)+' 夜')+'</option>';
+      var ts = t0 - i*86400;
+      var label;
+      if (i === 0)      label = after ? '今晚（进行中）' : '今晚（未开始）';
+      else if (i === 1) label = '昨晚';
+      else              label = mmdd(ts) + ' 夜';
+      h += '<option value="'+ts+'">'+label+'</option>';
     }
     sel.html(h).data('built',1).val(S.day);
   }

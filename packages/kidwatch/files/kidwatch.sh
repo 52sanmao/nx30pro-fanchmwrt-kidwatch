@@ -90,7 +90,8 @@ import_sites() {
 	[ -f "$SITES" ] || return 0
 	{ echo "BEGIN;"
 	  awk -F'\t' 'NF>=3 && substr($1,1,1)!="#" {
-	      printf "INSERT OR IGNORE INTO site(dom,name,cat,src) VALUES('"'"'%s'"'"','"'"'%s'"'"','"'"'%s'"'"',0);\n", $1, $2, $3
+	      printf "INSERT INTO site(dom,name,cat,src) VALUES('"'"'%s'"'"','"'"'%s'"'"','"'"'%s'"'"',0) " \
+	             "ON CONFLICT(dom) DO UPDATE SET name=excluded.name, cat=excluded.cat WHERE site.src=0;\n", $1, $2, $3
 	  }' "$SITES"
 	  echo "COMMIT;"
 	} | sqlite3 "$DB"
@@ -133,31 +134,42 @@ metric_sql() {
 # ---------------------------------------------------------------- 查询
 q_overview() {
 	R=$(cond); O=$(metric_sql "${MET:-dur}")
+	# agg 用于总量；top 额外剔掉空域名与 CDN，保持与下方榜单口径一致
 	sj "
 	WITH agg AS (
 	  SELECT d.dom AS dom, SUM(d.dur) AS dur, SUM(d.up+d.dn) AS by, SUM(d.n) AS n
 	  FROM daily d LEFT JOIN site s ON s.dom=d.dom
-	  WHERE $R GROUP BY d.dom)
+	  WHERE $R GROUP BY d.dom),
+	topx AS (
+	  SELECT a.dom AS dom, a.dur AS dur, a.by AS by, a.n AS n
+	  FROM agg a LEFT JOIN site s2 ON s2.dom=a.dom
+	  WHERE a.dom<>'' AND COALESCE(s2.cat,'other')<>'cdn')
 	SELECT
 	  (SELECT COALESCE(SUM(dur),0) FROM agg)                AS dur,
 	  (SELECT COALESCE(SUM(by),0)  FROM agg)                AS by,
-	  (SELECT COUNT(*) FROM agg)                            AS sites,
+	  (SELECT COUNT(*) FROM agg WHERE dom<>'')              AS sites,
 	  (SELECT COALESCE(SUM(n),0)   FROM agg)                AS visits,
-	  (SELECT dom  FROM agg ORDER BY $O DESC, dur DESC LIMIT 1) AS top_dom,
-	  (SELECT COALESCE($O,0) FROM agg ORDER BY $O DESC, dur DESC LIMIT 1) AS top_val,
-	  (SELECT COALESCE((SELECT name FROM site WHERE dom=(SELECT dom FROM agg ORDER BY $O DESC, dur DESC LIMIT 1)),'')) AS top_name,
+	  (SELECT dom  FROM topx ORDER BY $O DESC, dur DESC LIMIT 1) AS top_dom,
+	  (SELECT COALESCE($O,0) FROM topx ORDER BY $O DESC, dur DESC LIMIT 1) AS top_val,
+	  (SELECT COALESCE((SELECT name FROM site WHERE dom=(SELECT dom FROM topx ORDER BY $O DESC, dur DESC LIMIT 1)),'')) AS top_name,
 	  $F AS f, $T AS t;"
 }
 
 q_top() {
 	R=$(cond); O=$(metric_sql "${MET:-dur}"); L=${LIM:-10}
+	# cat='cdn' 是 CDN/统计/云服务等基础设施，不是"站点"，默认不进榜单，
+	# 否则 Akamai/AWS/阿里CDN 会把真实站点全挤掉（占比仍在 cats 里体现）。
+	RC=""
+	if [ -z "${C:-}" ]; then
+		RC="AND COALESCE(s.cat,'other')<>'cdn' AND d.dom<>''"
+	fi
 	sj "
 	SELECT d.dom AS dom,
 	       COALESCE(s.name,'') AS name,
 	       COALESCE(s.cat,'other') AS cat,
 	       SUM(d.dur) AS dur, SUM(d.up+d.dn) AS by, SUM(d.n) AS n
 	FROM daily d LEFT JOIN site s ON s.dom=d.dom
-	WHERE $R GROUP BY d.dom
+	WHERE $R $RC GROUP BY d.dom
 	ORDER BY $O DESC, dur DESC LIMIT $L;"
 }
 
@@ -167,7 +179,7 @@ q_cats() {
 	SELECT COALESCE(s.cat,'other') AS cat,
 	       SUM(d.dur) AS dur, SUM(d.up+d.dn) AS by, SUM(d.n) AS n
 	FROM daily d LEFT JOIN site s ON s.dom=d.dom
-	WHERE $R GROUP BY cat ORDER BY dur DESC;"
+	WHERE $R AND d.dom<>'' GROUP BY COALESCE(s.cat,'other') ORDER BY dur DESC;"
 }
 
 q_hours() {
@@ -177,8 +189,8 @@ q_hours() {
 	       COALESCE(s.cat,'other') AS cat,
 	       SUM(t.dur) AS dur, SUM(t.up+t.dn) AS by
 	FROM sess t LEFT JOIN site s ON s.dom=t.dom
-	WHERE t.day>=$F AND t.day<=$T $MF
-	GROUP BY h, cat ORDER BY h;"
+	WHERE t.day>=$F AND t.day<=$T AND t.dom<>'' $MF
+	GROUP BY h, COALESCE(s.cat,'other') ORDER BY h;"
 }
 
 q_days() {
@@ -226,24 +238,30 @@ q_devs() {
 	FROM dev v ORDER BY dur DESC, last DESC;"
 }
 
+# 夜间窗口固定 22:30 -> 次日 06:00（与前端 72 格 x 5 分钟对应）
+# TOD 把 ts 换算成"当日秒数"，负数取模要补一圈，否则前一天 23 点会被漏掉。
+# 注意：DAY 在参数解析后才赋值，所以表达式必须在函数内部拼。
+tod_expr() { echo "((((ts - $DAY) % 86400) + 86400) % 86400)"; }
+night_expr() { local t; t=$(tod_expr); echo "($t >= 81000 OR $t < 21600)"; }
+
 q_night() {
 	N=${NDAYS:-1}
 	A=$((DAY + 22*3600 + 1800 - (N-1)*86400))
 	B=$((DAY + 86400 + 6*3600))
 	MF=""; [ -n "${M:-}" ] && MF="AND mac='$(sq "$M")'"
 	sj "SELECT ts, mac, air, on_s, fl, dq, by, ent, nd FROM win
-	    WHERE ts>=$A AND ts<$B $MF ORDER BY ts;"
+	    WHERE ts>=$A AND ts<$B AND $(night_expr) $MF ORDER BY ts;"
 }
 
 q_base() {
-	A=$((DAY + 22*3600 + 1800)); B=$((DAY + 86400 + 6*3600))
-	BA=$((A - 7*86400)); BB=$((B - 7*86400))
+	# 过去 7 个夜晚（不含今晚，今晚数据尚不完整会拉低基线）
+	BA=$((DAY - 7*86400)); BB=$((DAY + 22*3600 + 1800))
 	sj "
 	SELECT mac, MAX(air) AS p90 FROM (
 	  SELECT mac, air,
 	         ROW_NUMBER() OVER (PARTITION BY mac ORDER BY air) AS rn,
 	         COUNT(*)     OVER (PARTITION BY mac) AS c
-	  FROM win WHERE ts>=$BA AND ts<$BB
+	  FROM win WHERE ts>=$BA AND ts<$BB AND $(night_expr)
 	) WHERE rn = MAX(1, CAST(c*0.9 AS INTEGER)) GROUP BY mac;"
 }
 
