@@ -1439,6 +1439,20 @@
     .device-card > .mini + .mini {
         border-left: 1px solid var(--border-color-low, #eef1f4);
     }
+    /* 暗色主题会给 #maincontent 下**所有** .mini 加卡片底/描边/阴影：
+       :root[data-darkmode="true"] body.theme_layout #maincontent .mini {…}  特异性 (1,4,1)，
+       高过上面的 .device-card > .mini (0,2,0)，会把一体化的设备总卡裂成 5 个
+       描了边的空面板（底色还正好等于卡片色，只剩一圈 1px 亮边）。
+       浅色那条是 :where(.dash .mini)，特异性 0，所以只有暗色会坏 —— 这里必须压回去。 */
+    :root[data-darkmode="true"] body.theme_layout #maincontent .dash .device-card > .mini {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    :root[data-darkmode="true"] body.theme_layout #maincontent .dash .device-card > .mini + .mini {
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+    }
     .device-card .mini-title { margin-bottom: 6px; font-size: 13px; }
     .device-card #running-status-card > div:first-child {
         margin-bottom: 4px !important;
