@@ -8,26 +8,26 @@ local function q(s)
 	return "'" .. s .. "'"
 end
 
--- KidWatch 不是一个"大杂烩"页面，而是按固件原有的信息架构分散到各分类下：
---   系统监控 / 上网记录 / 家长控制 / 用户列表
--- 五处入口共用同一份模板，前端按 URL 末段决定默认打开哪个页签，
--- 页签之间仍可横向切换（同一份数据的不同视角）。
-local ENTRY = {
-	{ {"admin", "fwx_monitor", "kidwatch"}, "家长看板", 60, "ov" },
-	{ {"admin", "fwx_internet_record", "kwsites"}, "网站记录", 82, "web" },
-	{ {"admin", "fwx_parental_control", "kwnight"}, "夜间守卫", 40, "night" },
-	{ {"admin", "fwx_monitor", "kwsys"}, "设备状态", 61, "sys" },
-	{ {"admin", "fwx_user", "kwdev"}, "设备标签", 14, "dev" },
+-- 三页组成独立分组「守护视图」，排在固件「仪表板」之后。
+-- 父节点名刻意取 fwx_guard：主题的 getMenuCategory() 只看节点名是否以 fwx 开头，
+-- 是则归普通模式，否则落到高级模式。用 kidwatch 这种名字会被推进高级模式，
+-- 所以这里不叫 admin/kidwatch。主题 JS 一行都不用改。
+-- URL 末段仍是 ov/web/night，模板靠它决定打开哪个视角。
+--
+--「运行状态」不再是一个菜单项，也不再是仪表板下的子页 —— 它是仪表板页面底部的一块，
+-- 由 luci-static/resources/kidwatch/dashsys.js 挂上去（只在 fwx_dashboard 页执行）。
+-- 这样总览就是一张页：上面固件自己的实时圆环，下面 CPU / 温度 / 内存的历史曲线。
+local NAV = {
+	{ "ov",    "概览",     10 },
+	{ "web",   "上网详单", 20 },
+	{ "night", "夜间守卫", 30 },
 }
 
 function index()
-	entry({"admin", "fwx_monitor"}, firstchild(), _("System Monitor"), 12).dependent = true
-	entry({"admin", "fwx_internet_record"}, firstchild(), _("Internet Record"), 80).dependent = true
-	entry({"admin", "fwx_parental_control"}, firstchild(), _("Parental Control"), 30).dependent = true
-	entry({"admin", "fwx_user"}, firstchild(), _("User List"), 13).dependent = true
-
-	for _, e in ipairs(ENTRY) do
-		entry(e[1], template("kidwatch/main"), e[2], e[3]).dependent = true
+	-- 标题直接写中文：这些词条不在固件的中文词表里，走 _() 会回落成英文
+	entry({"admin", "fwx_guard"}, firstchild(), "守护视图", 20).dependent = true
+	for idx, p in ipairs(NAV) do
+		entry({"admin", "fwx_guard", p[1]}, template("kidwatch/main"), p[2], p[3]).dependent = true
 	end
 	entry({"admin", "kidwatch_api", "call"}, call("api")).leaf = true
 end
@@ -62,6 +62,124 @@ local function live()
 			}
 		end
 	end
+	return out
+end
+
+-- 今日流量直接取固件的数：总量在 get_dashboard_common 的 system.flow，
+-- 每设备在 get_daily_top_users。固件已经按连接记过账，不必自己再累加一遍。
+local function flow()
+	local res = luci.util.ubus("fwx", "common", { api = "get_dashboard_common", data = {} })
+	local sys = res and res.data and res.data.system_status
+	local fl = (sys and sys.flow) or {}
+	local out = {
+		up = tonumber(fl.today_up) or 0,
+		down = tonumber(fl.today_down) or 0,
+		per = {},
+	}
+	local du = luci.util.ubus("fwx", "common", { api = "get_daily_top_users", data = {} })
+	local users = du and du.data and du.data.users
+	if type(users) == "table" then
+		for _, u in ipairs(users) do
+			if u.mac then
+				out.per[u.mac] = {
+					up = tonumber(u.up_bytes) or 0,
+					dn = tonumber(u.down_bytes) or 0,
+				}
+			end
+		end
+	end
+	return out
+end
+
+-- 应用视角：直接用固件 visit_list 里"今天每个应用用了多久"的累计值。
+-- 这是仪表板"活跃网址"背后的同一份数据，DPI 识别到应用名和 appid，
+-- 类目用固件的 class_list，不需要域名库，也不用自己按连接去猜。
+-- 名字要跟固件 class_list 里实际出现的分类一一对上，漏一个就有整类应用掉进"工具"
+local CATMAP = {
+	["聊天"] = "social", ["社交"] = "social",
+	["游戏"] = "game", ["视频"] = "video", ["音乐"] = "music",
+	["购物"] = "shop", ["教育"] = "study", ["学习"] = "study",
+	["小说"] = "novel", ["阅读"] = "novel",
+	["新闻"] = "news", ["资讯"] = "news", ["常用网站"] = "news",
+	["工具"] = "tool", ["办公"] = "tool", ["下载"] = "tool",
+	["招聘"] = "tool", ["金融"] = "tool", ["旅游"] = "tool", ["生活"] = "tool",
+}
+
+-- 固件把支付、办公也塞进"聊天"，按应用名纠一下就没那么离谱
+local NAMECAT = {
+	["支付宝"] = "shop", ["钉钉"] = "tool", ["飞书"] = "tool",
+	["微信"] = "social", ["QQ"] = "social", ["微博"] = "social",
+	["王者荣耀"] = "game", ["原神"] = "game", ["和平精英"] = "game",
+	["抖音"] = "video", ["快手"] = "video", ["哔哩哔哩"] = "video",
+	["腾讯视频"] = "video", ["爱奇艺"] = "video", ["优酷"] = "video",
+	["淘宝"] = "shop", ["京东"] = "shop", ["拼多多"] = "shop",
+	["网易云音乐"] = "music", ["QQ音乐"] = "music",
+	["知乎"] = "news", ["小红书"] = "social",
+}
+
+-- 设备名跟终端列表用同一招：DHCP 租约里按 MAC 找主机名（固件 user.lua 也是这么干的）
+local function lease_names()
+	local map, fd = {}, io.open("/tmp/dhcp.leases", "r")
+	if not fd then return map end
+	for ln in fd:lines() do
+		local _, mac, _, name = ln:match("^(%d+) (%S+) (%S+) (%S+)")
+		if mac and name and name ~= "*" then map[mac:lower()] = name end
+	end
+	fd:close()
+	return map
+end
+
+local function apps()
+	local res = luci.util.ubus("fwx", "common", { api = "visit_list", data = {} })
+	local devs = res and res.data and res.data.dev_list
+	if type(devs) ~= "table" then return {} end
+
+	local cls = luci.util.ubus("fwx", "common", {
+		api = "class_list", data = {}, CopyRight = "www.fanchmwrt.com",
+	})
+	local aid_cat = {}
+	local list = cls and cls.data and cls.data.class_list
+	if type(list) == "table" then
+		for _, c in ipairs(list) do
+			local cat = CATMAP[c.name or ""] or "tool"
+			for _, item in ipairs(c.app_list or {}) do
+				local id = tostring(item):match("^(%d+),")
+				if id then aid_cat[tonumber(id)] = cat end
+			end
+		end
+	end
+
+	local out, agg, leases = {}, {}, lease_names()
+	for _, d in ipairs(devs) do
+		local mac = tostring(d.mac or "")
+		local who = tostring(d.hostname or "")
+		if who == "" and mac ~= "" then who = leases[mac:lower()] or "" end
+		for _, v in ipairs(d.visit_info or {}) do
+			local aid = tonumber(v.appid) or 0
+			local app = tostring(v.appname or "")
+			local key = mac .. "|" .. aid
+			local row = {
+				mac = mac,
+				host = who,
+				app = app,
+				appid = aid,
+				cat = NAMECAT[app] or aid_cat[aid] or "tool",
+				dur = tonumber(v.total_time) or 0,
+				online = tonumber(v.online) or 0,
+				last = tonumber(v.latest_time) or 0,
+			}
+			-- 同一设备同一应用可能出现多条（不同连接），累计时长取最大值，别叠加
+			local old = agg[key]
+			if old then
+				if row.dur > old.dur then old.dur = row.dur; old.last = row.last end
+				if row.online > old.online then old.online = row.online end
+			else
+				agg[key] = row
+				out[#out + 1] = row
+			end
+		end
+	end
+	table.sort(out, function(a, b) return a.dur > b.dur end)
 	return out
 end
 
@@ -103,6 +221,26 @@ function api()
 
 	if fn == "live" then
 		luci.http.write_json(live())
+		return
+	end
+
+	-- 流量直接用固件的数（站点级流量固件没有，采样也拿不到，就不编了）
+	if fn == "flow" then
+		luci.http.write_json(flow())
+		return
+	end
+
+	-- 应用维度（活跃网址）：固件 DPI 的应用时长，按设备 + 应用聚合
+	if fn == "apps" then
+		local all, mac = apps(), luci.http.formvalue("mac")
+		if mac and mac ~= "all" and mac ~= "" then
+			local f = {}
+			for _, x in ipairs(all) do
+				if x.mac == mac then f[#f + 1] = x end
+			end
+			all = f
+		end
+		luci.http.write_json(all)
 		return
 	end
 
@@ -156,6 +294,7 @@ function api()
 	if days then cmd = cmd .. " --days " .. days end
 	local dom = safe_dom(luci.http.formvalue("dom"))
 	if dom then cmd = cmd .. " --dom " .. dom end
+	if luci.http.formvalue("nocdn") == "1" then cmd = cmd .. " --nocdn" end
 	local kw = luci.http.formvalue("q")
 	if kw and #kw <= 60 then cmd = cmd .. " --q " .. q(kw) end
 

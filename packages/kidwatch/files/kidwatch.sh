@@ -37,6 +37,18 @@ CREATE TABLE IF NOT EXISTS dev(
   ip   TEXT, first INTEGER, last INTEGER, base REAL
 );
 
+-- 设备实时状态：一律取自固件（get_all_users / visit_list），
+-- 本地 dev 表只保留"用户设定"（别名/角色/统计方式），用 mac 关联。
+CREATE TABLE IF NOT EXISTS devlive(
+  mac TEXT PRIMARY KEY,
+  host TEXT NOT NULL DEFAULT '',
+  ip   TEXT NOT NULL DEFAULT '',
+  ip6  TEXT NOT NULL DEFAULT '',
+  online INTEGER NOT NULL DEFAULT 0,
+  wl INTEGER NOT NULL DEFAULT 0,
+  ts INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS site(
   dom  TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
@@ -97,7 +109,36 @@ import_sites() {
 	} | sqlite3 "$DB"
 }
 
-# ---------------------------------------------------------------- 采集
+# ---------------------------------------------------------------- 采样
+# 主数据源：fwx 守护进程的实时表（active_host / active_app / get_all_users）。
+# 固件仪表板的"活跃网址"用的就是这份数据，这里只是定时取一次并累积成历史。
+do_poll() {
+	do_init >/dev/null 2>&1
+	KWDB="$DB" KWIV="${KWIV:-180}" lua /usr/lib/kidwatch/poll.lua
+}
+
+# procd 常驻入口：系统指标每 60 秒一个点（系统页的曲线要密），
+# 流量每 KWIV 秒（默认 180）取一次快照——间隔必须与 poll.lua 里累加的 dur 一致。
+do_watch() {
+	IV="${KWIV:-180}"
+	step=$((IV / 60)); [ "$step" -lt 1 ] && step=1
+	n=0
+	while :; do
+		# dnsmasq 的查询日志是 O_APPEND 打开的，除非有人动它否则一直涨。
+		# /tmp 是 116MB 的 tmpfs，实测 24 小时涨 114MB —— 涨满之后 LuCI 的
+		# 模板缓存、其他服务的临时文件全部写不进去，表现成"路由器莫名其妙卡住"。
+		# 主数据源走的是 fwx 的 DPI 表，这份日志只剩原始查询明细这一个用途，
+		# 所以到上限直接截断即可（不用重启 dnsmasq，它下次写会落在新末尾）。
+		[ "$(wc -c < "$DNSLOG" 2>/dev/null || echo 0)" -gt "${KWDNSMAX:-4194304}" ] && : > "$DNSLOG"
+		KWDB="$DB" lua /usr/lib/kidwatch/poll.lua --sys
+		n=$((n + 1))
+		[ $((n % step)) -eq 0 ] && do_poll
+		sleep 60
+	done
+}
+
+# 遗留：解析 dnsmasq 日志 + conntrack 的老路子，默认不再定时执行。
+# 只在需要"域名级原始明细"时手动跑一次。
 do_collect() {
 	do_init >/dev/null 2>&1
 	rm -f "$TMP/emit.sql"
@@ -120,6 +161,7 @@ cond() {
 	[ -n "${M:-}" ] && R="$R AND d.mac='$(sq "$M")'"
 	[ -n "${C:-}" ] && R="$R AND COALESCE(s.cat,'other')='$(sq "$C")'"
 	[ -n "${Q:-}" ] && R="$R AND (d.dom LIKE '%$(sq "$Q")%' OR COALESCE(s.name,'') LIKE '%$(sq "$Q")%')"
+	[ "${NOCDN:-0}" = 1 ] && R="$R AND COALESCE(s.cat,'other')<>'cdn'"
 	printf '%s' "$R"
 }
 
@@ -134,18 +176,23 @@ metric_sql() {
 # ---------------------------------------------------------------- 查询
 q_overview() {
 	R=$(cond); O=$(metric_sql "${MET:-dur}")
-	# agg 用于总量；top 额外剔掉空域名与 CDN，保持与下方榜单口径一致
+	# agg 用于站点维度；perdev 给"上网时长"用——采样是把一轮时长摊到各站点，
+	# 按设备累加后仍可能超过 24 小时（并发连接多），所以按设备封顶一天。
 	sj "
 	WITH agg AS (
 	  SELECT d.dom AS dom, SUM(d.dur) AS dur, SUM(d.up+d.dn) AS by, SUM(d.n) AS n
 	  FROM daily d LEFT JOIN site s ON s.dom=d.dom
 	  WHERE $R GROUP BY d.dom),
+	perdev AS (
+	  SELECT d.mac AS mac, SUM(d.dur) AS dw
+	  FROM daily d LEFT JOIN site s ON s.dom=d.dom
+	  WHERE $R GROUP BY d.mac),
 	topx AS (
 	  SELECT a.dom AS dom, a.dur AS dur, a.by AS by, a.n AS n
 	  FROM agg a LEFT JOIN site s2 ON s2.dom=a.dom
 	  WHERE a.dom<>'' AND COALESCE(s2.cat,'other')<>'cdn')
 	SELECT
-	  (SELECT COALESCE(SUM(dur),0) FROM agg)                AS dur,
+	  (SELECT COALESCE(SUM(MIN(dw,86400)),0) FROM perdev)   AS dur,
 	  (SELECT COALESCE(SUM(by),0)  FROM agg)                AS by,
 	  (SELECT COUNT(*) FROM agg WHERE dom<>'')              AS sites,
 	  (SELECT COALESCE(SUM(n),0)   FROM agg)                AS visits,
@@ -229,13 +276,27 @@ q_sess() {
 
 q_devs() {
 	D=$(nmid "$(date +%Y-%m-%d)")
+	# 设备清单以固件为准（devlive 来自 fwx 的 get_all_users / visit_list），
+	# dev 只提供别名与角色；两表按 mac 关联，避免各存一份设备信息。
 	sj "
-	SELECT v.mac AS mac,
-	       COALESCE(NULLIF(v.alias,''),NULLIF(v.host,''),v.mac) AS name,
-	       v.role AS role, v.mode AS mode, v.host AS host, v.ip AS ip, v.last AS last,
-	       COALESCE((SELECT SUM(dur) FROM daily WHERE mac=v.mac AND day=$D),0) AS dur,
-	       COALESCE((SELECT SUM(up+dn) FROM daily WHERE mac=v.mac AND day=$D),0) AS by
-	FROM dev v ORDER BY dur DESC, last DESC;"
+	WITH u AS (
+	  SELECT l.mac AS mac,
+	         COALESCE(NULLIF(v.alias,''),NULLIF(v.host,''),NULLIF(l.host,''),l.mac) AS name,
+	         COALESCE(v.role,'child') AS role,
+	         COALESCE(v.mode,'full')  AS mode,
+	         COALESCE(v.alias,'') AS alias,
+	         l.host AS host, l.ip AS ip, l.online AS online, l.wl AS wl, l.ts AS last
+	  FROM devlive l LEFT JOIN dev v ON v.mac=l.mac
+	  UNION ALL
+	  SELECT v.mac, COALESCE(NULLIF(v.alias,''),NULLIF(v.host,''),v.mac),
+	         v.role, v.mode, v.alias, COALESCE(v.host,''), COALESCE(v.ip,''), 0, 0, COALESCE(v.last,0)
+	  FROM dev v WHERE NOT EXISTS(SELECT 1 FROM devlive l WHERE l.mac=v.mac)
+	)
+	SELECT u.mac AS mac, u.name AS name, u.role AS role, u.mode AS mode,
+	       u.alias AS alias, u.host AS host, u.ip AS ip, u.online AS online, u.wl AS wl, u.last AS last,
+	       MIN(COALESCE((SELECT SUM(dur) FROM daily WHERE mac=u.mac AND day=$D),0),86400) AS dur,
+	       COALESCE((SELECT SUM(up+dn) FROM daily WHERE mac=u.mac AND day=$D),0) AS by
+	FROM u ORDER BY dur DESC, last DESC;"
 }
 
 # 夜间窗口固定 22:30 -> 次日 06:00（与前端 72 格 x 5 分钟对应）
@@ -352,12 +413,10 @@ do_maint() {
 }
 
 do_rotate() {
-	sz=$(wc -c < "$DNSLOG" 2>/dev/null || echo 0)
-	if [ "$sz" -gt 25165824 ] || [ "${1:-}" = "force" ]; then
-		/etc/init.d/dnsmasq restart >/dev/null 2>&1
-		sleep 2
-		/etc/init.d/kidwatch restart >/dev/null 2>&1
-	fi
+	# 原来这里是「重启 dnsmasq + 重启采集」来腾日志空间，代价是断网一两秒，
+	# 只为一个日志文件不值当。dnsmasq 以 O_APPEND 打开日志，截断后它会自己
+	# 落在新末尾；collect.awk 那边有 dnspos 回退检测（s < dnspos 时重置）。
+	: > "$DNSLOG"
 }
 
 # ---------------------------------------------------------------- 入口
@@ -378,6 +437,7 @@ case "$cmd" in
 				--q)     Q=$2; shift 2 ;;
 				--met)   MET=$2; shift 2 ;;
 				--lim)   LIM=$2; shift 2 ;;
+				--nocdn) NOCDN=1; shift ;;
 				--off)   OFF=$2; shift 2 ;;
 				--day)   DAY=$2; shift 2 ;;
 				--days)  NDAYS=$2; shift 2 ;;
@@ -408,8 +468,10 @@ case "$cmd" in
 	setdev)   do_setdev "$@" ;;
 	setsite)  do_setsite "$@" ;;
 	sethost)  do_sethost ;;
+	poll)     do_poll ;;
+	watch)    do_watch ;;
 	sites)    import_sites ;;
 	maint)    do_maint ;;
 	rotate)   do_rotate "${1:-}" ;;
-	*) echo "usage: kidwatch {init|collect|query|setdev|setsite|sites|maint|rotate}" ;;
+	*) echo "usage: kidwatch {init|poll|collect|query|setdev|setsite|sites|maint|rotate}" ;;
 esac

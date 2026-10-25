@@ -1,0 +1,491 @@
+#!/usr/bin/lua
+--[[
+KidWatch 采样器 —— 数据全部来自 fwx 守护进程，不解析任何日志。
+
+为什么不用 dnsmasq 日志 + conntrack：
+  固件仪表板上的"活跃网址"就是 fwx 已经维护好的实时表（active_host），
+  带真实连接的 Host/URL；"应用识别"（active_app）还带 appid 和应用名，
+  类目表（class_list）也是现成的。自己再去解析 DNS 日志等于重复造轮子，
+  而且 DNS 只是解析记录（预取、失败、CDN 调度都算），不代表真的在用。
+
+每轮采样做三件事：
+  1. active_host 里每个 (设备, host) 记一次命中 -> daily.dur += 间隔
+  2. 命中 host 若能被 active_app/class_list 识别，把应用名和类目写进 site（只在库里没有时兜底）
+  3. 刷新设备在线/主机名/IP（devlive），设备清单以固件为准
+]]
+
+local jsonc = require "luci.jsonc"
+
+local DB = os.getenv("KWDB") or "/etc/kidwatch/kw.db"
+local IV = tonumber(os.getenv("KWIV") or "180") -- 采样间隔（秒），必须与 cron 周期一致
+local NOW = os.time()
+-- 与 kidwatch.sh 的 nmid 对齐：当天 00:00 的 unixtime（本地时区），不是 %Y%m%d
+local DAY = os.time({
+  year = tonumber(os.date("%Y")),
+  month = tonumber(os.date("%m")),
+  day = tonumber(os.date("%d")),
+  hour = 0, min = 0, sec = 0,
+})
+
+-- 固件 class_list 的中文类目 -> 本地 cat 代码
+local CATMAP = {
+  ["游戏"] = "game", ["社交"] = "social", ["视频"] = "video",
+  ["音乐"] = "music", ["购物"] = "shop", ["学习"] = "study",
+  ["小说"] = "novel", ["阅读"] = "novel", ["新闻"] = "news",
+  ["资讯"] = "news", ["工具"] = "tool", ["办公"] = "tool",
+  ["金融"] = "tool", ["旅游"] = "tool", ["生活"] = "tool",
+}
+
+-- ---------------------------------------------------------------- 系统指标
+-- 系统页要的是 CPU/温度/内存，和"谁在上网"无关，所以单独一个 60 秒实例跑。
+-- 只读 /proc 和 /sys，不起进程、不调 ubus，开销基本为零。
+local function readf(p)
+  local f = io.open(p, "r")
+  if not f then return nil end
+  local s = f:read("*a")
+  f:close()
+  return s
+end
+
+local function cpu_stat()
+  local s = readf("/proc/stat") or ""
+  local v = s:match("^cpu%s+([%d%s]+)")
+  if not v then return nil end
+  local total, idle = 0, 0
+  local i = 0
+  for n in v:gmatch("%d+") do
+    i = i + 1
+    total = total + tonumber(n)
+    if i == 4 or i == 5 then idle = idle + tonumber(n) end  -- idle + iowait
+  end
+  return total, idle
+end
+
+local function cpu_pct()
+  local t1, i1 = cpu_stat()
+  if not t1 then return nil end
+  os.execute("sleep 1")   -- busybox sleep 只认整数秒，0.3 会直接报错
+  local t2, i2 = cpu_stat()
+  if not t2 or t2 <= t1 then return nil end
+  local pct = (1 - (i2 - i1) / (t2 - t1)) * 100
+  if pct < 0 then pct = 0 elseif pct > 100 then pct = 100 end
+  return math.floor(pct * 10) / 10
+end
+
+local function temp_c()
+  for i = 0, 4 do
+    local s = readf("/sys/class/thermal/thermal_zone" .. i .. "/temp")
+    if s then
+      local v = tonumber(s:match("%-?%d+"))
+      if v then
+        if v > 1000 then v = v / 1000 end
+        if v > -40 and v < 150 then return math.floor(v + 0.5) end
+      end
+    end
+  end
+  local p = io.popen("cat /sys/class/hwmon/hwmon*/temp1_input 2>/dev/null | head -1")
+  if p then
+    local s = p:read("*l")
+    p:close()
+    local v = tonumber(s or "")
+    if v and v > 1000 then v = v / 1000 end
+    if v and v > -40 and v < 150 then return math.floor(v + 0.5) end
+  end
+  return nil
+end
+
+local function mem_mb()
+  local s = readf("/proc/meminfo") or ""
+  local tot = tonumber(s:match("MemTotal:%s+(%d+)"))
+  local av = tonumber(s:match("MemAvailable:%s+(%d+)")) or tonumber(s:match("MemFree:%s+(%d+)"))
+  if not tot or not av then return nil end
+  return math.floor((tot - av) / 1024)
+end
+
+local function load1()
+  local s = readf("/proc/loadavg") or ""
+  return tonumber(s:match("^([%d%.]+)"))
+end
+
+local function collect_sys()
+  local cpu, tc, mem, ld = cpu_pct(), temp_c(), mem_mb(), load1()
+  if not cpu and not tc and not mem then return false end
+  local sql = string.format(
+    "INSERT OR REPLACE INTO sysm(ts,cpu,load,mem,tc,w24,w5) VALUES(%d,%s,%s,%s,%s,0,0);",
+    os.time(),
+    cpu and string.format("%.1f", cpu) or "NULL",
+    ld and string.format("%.2f", ld) or "NULL",
+    mem and tostring(mem) or "NULL",
+    tc and tostring(tc) or "NULL")
+  local p = io.popen("sqlite3 '" .. DB .. "' 2>/dev/null", "w")
+  if p then p:write(sql, "\n"); p:close() end
+  return true
+end
+
+if arg and arg[1] == "--sys" then
+  collect_sys()
+  os.exit(0)
+end
+
+local function ubus(api, data, extra)  local req = { api = api, data = data or {} }
+  if extra then
+    for k, v in pairs(extra) do req[k] = v end
+  end
+  local ok, s = pcall(jsonc.stringify, req)
+  if not ok then return nil end
+  local p = io.popen("ubus call fwx common '" .. s .. "' 2>/dev/null", "r")
+  if not p then return nil end
+  local out = p:read("*a") or ""
+  p:close()
+  local ok2, res = pcall(jsonc.parse, out)
+  if not ok2 or type(res) ~= "table" or res.code ~= 2000 then return nil end
+  return res.data
+end
+
+local function esc(v)
+  if v == nil then return "" end
+  v = tostring(v)
+  if v == "" or v == "nil" then return "" end
+  return (v:gsub("'", ""))
+end
+
+-- 一次聚合拿活跃网址/应用/系统，再补三次小接口
+local dash = ubus("get_dashboard_common") or {}
+local hosts = (dash.active_host or {}).list or {}
+local apps = (dash.active_app or {}).list or {}
+local users = ubus("get_all_users") or {}
+local vis = ubus("visit_list") or {}
+local cls = ubus("class_list", {}, { CopyRight = "www.fanchmwrt.com" }) or {}
+
+-- appid -> 类目 / 应用名
+local aid_cat, aid_name = {}, {}
+for _, c in ipairs(cls.class_list or {}) do
+  local cat = CATMAP[c.name or ""] or "tool"
+  for _, item in ipairs(c.app_list or {}) do
+    local id, nm = tostring(item):match("^(%d+),(.*)$")
+    if id then
+      aid_cat[tonumber(id)] = cat
+      aid_name[tonumber(id)] = nm
+    end
+  end
+end
+
+-- 域名 -> appid（active_app 带 domain）
+local dom_aid = {}
+for _, a in ipairs(apps) do
+  if a.domain and a.domain ~= "" and a.id then
+    dom_aid[a.domain] = tonumber(a.id)
+  end
+end
+
+-- host 逐级去前缀找 appid：cdn.qq.com -> qq.com
+local function lookup(host)
+  local aid = dom_aid[host]
+  if aid then return aid end
+  local x = host
+  for _ = 1, 5 do
+    local p = x:match("^[^.]+%.(.+)$")
+    if not p then break end
+    x = p
+    aid = dom_aid[x]
+    if aid then return aid end
+  end
+  return nil
+end
+
+-- 归一到站点根：jp1-lx.777096.xyz / gb-lx.777096.xyz 是一家，不该占两行。
+-- 二级后缀（com.cn / co.uk …）要保留三段，否则 apple.com.cn 会被截成 com.cn。
+local SECOND = {
+  ["com.cn"] = 1, ["net.cn"] = 1, ["org.cn"] = 1, ["gov.cn"] = 1,
+  ["edu.cn"] = 1, ["com.hk"] = 1, ["com.tw"] = 1, ["co.uk"] = 1,
+}
+local function root(host)
+  local p = {}
+  for s in host:gmatch("[^.]+") do p[#p + 1] = s end
+  local n = #p
+  if n <= 2 then return host end
+  local last2 = p[n - 1] .. "." .. p[n]
+  if SECOND[last2] and n >= 3 then return p[n - 2] .. "." .. last2 end
+  return last2
+end
+
+-- 长尾兜底：站点库里没有的域名，按关键词判一类。
+-- 只用来止损"DNS/CDN 调度域名占满类目"，宁可判成基础设施，也不要一堆"未分类"。
+local CDN_KEY = {
+  "cdn", "dns", "glb", "akamai", "cloudfront", "amazonaws", "qcloud",
+  "aliyun", "kunlun", "bdstatic", "gstatic", "static", "doubleclick",
+  "googlesyndication", "miaozhen", "umeng", "sentry",
+}
+local function guess_cat(host)
+  local h = host:lower()
+  for _, k in ipairs(CDN_KEY) do
+    if h:find(k, 1, true) then return "cdn" end
+  end
+  return nil
+end
+
+-- 设备在线状态（get_all_users 是终端列表的同一份数据）
+local online, wl = {}, {}
+local ulist = users.list or users.dev_list or {}
+for _, u in ipairs(ulist) do
+  if u.mac then
+    online[u.mac] = tonumber(u.online) or 0
+    wl[u.mac] = tonumber(u.is_wireless) or 0
+  end
+end
+
+-- 主机名 / IP 来自 visit_list（和终端列表同源）
+local host_of, ip_of, ip6_of = {}, {}, {}
+for _, d in ipairs(vis.dev_list or {}) do
+  if d.mac then
+    host_of[d.mac] = esc(d.hostname)
+    ip_of[d.mac] = esc(d.ip)
+    ip6_of[d.mac] = esc(d.ipv6)
+    if online[d.mac] == nil then online[d.mac] = 0 end
+  end
+end
+
+local sql = { "BEGIN;" }
+local n_hit, n_new, n_cdn = 0, 0, 0
+local seen = {}
+
+-- 先把站点库读进内存：判断一个 host 是不是"基础设施"（CDN/DNS/广告统计）。
+-- 这类连接几乎每轮都在（后台推送、心跳），算进"上网时长"会把真实使用淹没，
+-- 所以只记次数不记时长，榜单和类目分布里都不会出现。
+local cat_of = {}
+do
+  local p = io.popen("sqlite3 -separator '|' '" .. DB .. "' \"SELECT dom,cat FROM site\" 2>/dev/null")
+  if p then
+    for line in p:lines() do
+      local d, c = line:match("^([^|]+)|(.+)$")
+      if d then cat_of[d] = c end
+    end
+    p:close()
+  end
+end
+
+-- 第一遍：按设备把本轮的活跃站点归并起来。
+-- 关键：一轮 10 分钟是"设备的 10 分钟"，不是"每个域名的 10 分钟"。
+-- 若每个域名都记满 IV，一天下来能算出 50 多个小时，这种数没人信。
+local per, order = {}, {}
+for _, h in ipairs(hosts) do
+  local mac, raw = esc(h.mac), esc(h.host)
+  local host = raw ~= "" and root(raw) or ""
+  -- 同一站点每轮只记一次：手机上 10 条连接不等于用了 10 倍时间
+  local key = mac .. "|" .. host
+  if mac ~= "" and host ~= "" and not seen[key] then
+    seen[key] = true
+    local aid = lookup(raw) or lookup(host)
+    local nm, cat = "", ""
+    if aid then
+      nm, cat = aid_name[aid] or "", aid_cat[aid] or "tool"
+    end
+    if nm == "" then
+      cat = cat_of[host] or cat_of[raw] or guess_cat(host) or "other"
+    end
+    if cat == "cdn" then
+      n_cdn = n_cdn + 1
+    else
+      if not per[mac] then per[mac] = {}; order[#order + 1] = mac end
+      local l = per[mac]
+      l[#l + 1] = { host = host, aid = tonumber(aid) or 0, nm = nm, cat = cat }
+      n_hit = n_hit + 1
+    end
+    if host_of[mac] == nil or host_of[mac] == "" then
+      host_of[mac] = esc(h.hostname)
+    end
+  end
+end
+
+-- 第二遍：这一轮的时长按站点数平摊，并补进 sess 供"一天里的节奏"按小时铺开
+for _, mac in ipairs(order) do
+  local l = per[mac]
+  local share = math.max(1, math.floor(IV / math.max(1, #l)))
+  for _, it in ipairs(l) do
+    sql[#sql + 1] = string.format(
+      "INSERT INTO daily(day,mac,dom,dur,up,dn,n) VALUES(%d,'%s','%s',%d,0,0,1) " ..
+      "ON CONFLICT(day,mac,dom) DO UPDATE SET dur=dur+%d, n=n+1;",
+      DAY, mac, it.host, share, share)
+    sql[#sql + 1] = string.format(
+      "INSERT INTO sess(mac,dom,day,ts0,ts1,dur,up,dn,n,appid) " ..
+      "VALUES('%s','%s',%d,%d,%d,%d,0,0,1,%d);",
+      mac, it.host, DAY, NOW - share, NOW, share, it.aid)
+    if it.aid > 0 and it.nm ~= "" then
+      -- 只在库里没有条目时兜底，内置库/用户改过的优先
+      sql[#sql + 1] = string.format(
+        "INSERT INTO site(dom,name,cat,src) VALUES('%s','%s','%s',2) " ..
+        "ON CONFLICT(dom) DO UPDATE SET name=excluded.name, cat=excluded.cat WHERE site.src>=2;",
+        it.host, it.nm, it.cat)
+      n_new = n_new + 1
+    elseif not cat_of[it.host] then
+      local gc = guess_cat(it.host)
+      if gc then
+        sql[#sql + 1] = string.format(
+          "INSERT INTO site(dom,name,cat,src) VALUES('%s','','%s',3) " ..
+          "ON CONFLICT(dom) DO UPDATE SET cat=excluded.cat WHERE site.src>=3;", it.host, gc)
+        n_new = n_new + 1
+      end
+    end
+  end
+end
+
+-- ---------------------------------------------------------------- 夜间窗口（5 分钟桶）
+-- 夜间守卫要回答的是"这一格设备是不是真的在用"，所以只能记增量，不能记累计值。
+-- 三样都来自固件本身，不解析 dnsmasq 日志：
+--   air  ← iw station dump 的 rx/tx duration 差分（微秒，真射频占用）
+--   on_s ← connected time 差分（有线上不了无线就一直是 0）
+--   by   ← get_daily_top_users 的字节差分
+-- 活跃站点数 / 域名数直接取本轮聚合结果（per），不需要另一套扫描。
+--
+-- 差分基线放 /tmp：重启后第一轮全部记 0（宁可漏一格，也不要凭空造一个尖峰）。
+local WIN_STATE = "/tmp/kidwatch/win.state"
+
+local function win_state()
+  local t = {}
+  local f = io.open(WIN_STATE, "r")
+  if f then
+    for line in f:lines() do
+      local k, v = line:match("^(%S+)%s+(%-?%d+)$")
+      if k then t[k] = tonumber(v) end
+    end
+    f:close()
+  end
+  return t
+end
+
+-- 每个无线接口 station dump 一次，取三行：rx duration / tx duration / connected time
+local function read_stations()
+  local air, conn = {}, {}
+  local ifs = {}
+  local p = io.popen("iw dev 2>/dev/null | awk '/Interface/{print $2}'")
+  if p then
+    for l in p:lines() do if l ~= "" then ifs[#ifs + 1] = l end end
+    p:close()
+  end
+  for _, dev in ipairs(ifs) do
+    local q = io.popen("iw dev " .. dev .. " station dump 2>/dev/null")
+    if q then
+      local mac
+      for line in q:lines() do
+        local m = line:match("^Station%s+(%S+)")
+        if m then
+          mac = m:lower()
+        elseif mac then
+          local v = line:match("^%s*rx duration:%s*(%d+)")
+          if v then air[mac] = (air[mac] or 0) + tonumber(v) end
+          v = line:match("^%s*tx duration:%s*(%d+)")
+          if v then air[mac] = (air[mac] or 0) + tonumber(v) end
+          v = line:match("^%s*connected time:%s*(%d+)")
+          if v then conn[mac] = tonumber(v) end
+        end
+      end
+      q:close()
+    end
+  end
+  return air, conn
+end
+
+local USED = win_state()
+local AIR, CONN = read_stations()
+
+local bu = {}
+do
+  local du = ubus("get_daily_top_users") or {}
+  for _, u in ipairs(du.users or {}) do
+    local m = esc(u.mac)
+    if m ~= "" then
+      bu[m] = (tonumber(u.up_bytes) or 0) + (tonumber(u.down_bytes) or 0)
+    end
+  end
+end
+
+local BKT = NOW - (NOW % 300)
+local ENT = { video = 1, game = 1, social = 1, music = 1, novel = 1 }
+
+-- 候选设备 = 本轮在线的 + 本轮有活跃站点的 + 无线有 airtime 增量的
+local cand, ncan = {}, 0
+local function add(mac)
+  if mac ~= "" and not cand[mac] then cand[mac] = true; ncan = ncan + 1 end
+end
+for mac in pairs(online) do if online[mac] == 1 then add(mac) end end
+for _, mac in ipairs(order) do add(mac) end
+for mac in pairs(AIR) do add(mac) end
+
+for mac in pairs(cand) do
+  local a, on, by = 0, 0, 0
+
+  if AIR[mac] then
+    local cur, prev = AIR[mac], USED["air:" .. mac]
+    if prev and cur >= prev then a = math.floor((cur - prev) / 1000) end
+    USED["air:" .. mac] = cur
+  end
+
+  if CONN[mac] then
+    local cur, prev = CONN[mac], USED["on:" .. mac]
+    -- 封顶 300：设备重连时 connected time 会跳，别让它变成一个假的高活跃
+    if prev and cur >= prev then on = math.min(300, cur - prev) end
+    USED["on:" .. mac] = cur
+  end
+
+  if bu[mac] then
+    local cur, prev = bu[mac], USED["by:" .. mac]
+    if prev and cur >= prev then by = cur - prev end
+    USED["by:" .. mac] = cur
+  end
+
+  local l = per[mac] or {}
+  local nd, tot, ne, doms = 0, 0, 0, {}
+  for _, it in ipairs(l) do
+    if not doms[it.host] then doms[it.host] = true; nd = nd + 1 end
+    tot = tot + 1
+    if ENT[it.cat] then ne = ne + 1 end
+  end
+  -- 娱乐类目的流量份额：类目是按站点记的，流量只按设备记，
+  -- 所以用"娱乐站点占本轮活跃站点的比例"把字节折过去，是个明确的近似。
+  local ent_by = (tot > 0) and math.floor(by * ne / tot) or 0
+
+  if a > 0 or on > 0 or by > 0 or #l > 0 then
+    sql[#sql + 1] = string.format(
+      "INSERT INTO win(ts,mac,air,on_s,fl,dq,by,ent,nd) VALUES(%d,'%s',%d,%d,%d,0,%d,%d,%d) " ..
+      "ON CONFLICT(ts,mac) DO UPDATE SET air=air+excluded.air, on_s=on_s+excluded.on_s, " ..
+      "fl=fl+excluded.fl, by=by+excluded.by, ent=ent+excluded.ent, " ..
+      "nd=MAX(nd,excluded.nd);",
+      BKT, mac, a, on, #l, by, ent_by, nd)
+  end
+end
+
+do
+  local f = io.open(WIN_STATE, "w")
+  if f then
+    for k, v in pairs(USED) do f:write(k, " ", v, "\n") end
+    f:close()
+  end
+end
+
+-- 设备在线快照：即使本轮没有任何活跃连接，也要更新"下线"状态
+for _, u in ipairs(ulist) do
+  local mac = esc(u.mac)
+  if mac ~= "" then
+    sql[#sql + 1] = string.format(
+      "INSERT INTO devlive(mac,host,ip,ip6,online,wl,ts) VALUES('%s','%s','%s','%s',%d,%d,%d) " ..
+      "ON CONFLICT(mac) DO UPDATE SET host=excluded.host, ip=excluded.ip, ip6=excluded.ip6, " ..
+      "online=excluded.online, wl=excluded.wl, ts=excluded.ts;",
+      mac, host_of[mac] or "", ip_of[mac] or "", ip6_of[mac] or "",
+      online[mac] or 0, wl[mac] or 0, NOW)
+  end
+end
+
+sql[#sql + 1] = string.format(
+  "INSERT INTO meta(k,v) VALUES('last_poll','%d') ON CONFLICT(k) DO UPDATE SET v=excluded.v;", NOW)
+sql[#sql + 1] = "COMMIT;"
+
+local p = io.popen("sqlite3 '" .. DB .. "' 2>/dev/null", "w")
+if p then
+  p:write(table.concat(sql, "\n"), "\n")
+  p:close()
+end
+
+collect_sys()   -- 顺手留一个点，万一 60 秒实例没起来，系统页也不至于全空
+
+print(string.format("poll ok: %d content, %d infra skipped, %d new sites, %d devs, iv=%ds",
+  n_hit, n_cdn, n_new, #ulist, IV))

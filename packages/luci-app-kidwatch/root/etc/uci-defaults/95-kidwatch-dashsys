@@ -1,0 +1,6 @@
+#!/bin/sh
+# 首次开机把仪表板脚本挂上去。实际逻辑在 /usr/lib/kidwatch/dashsys-inject.sh：
+# 拆成两个文件，是为了以后改注入逻辑时不必动这个（改了这个脚本的 md5，
+# OpenWrt 会认为它是新脚本而重新执行一次，本身无害，但没必要）。
+[ -x /usr/lib/kidwatch/dashsys-inject.sh ] && /usr/lib/kidwatch/dashsys-inject.sh
+exit 0

@@ -1,4 +1,3 @@
-# ---------- video ----------
 bilibili.com	哔哩哔哩	video
 hdslb.com	哔哩哔哩CDN	cdn
 bilivideo.com	哔哩哔哩视频	video
@@ -40,8 +39,6 @@ cctv.com	央视网	video
 cntv.cn	央视网	video
 miguvideo.com	咪咕视频	video
 zuidazy.com	最大资源网	video
-
-# ---------- game ----------
 4399.com	4399小游戏	game
 4399dmw.com	4399动漫	game
 7k7k.com	7k7k小游戏	game
@@ -56,11 +53,7 @@ cf.qq.com	穿越火线	game
 speed.qq.com	QQ飞车	game
 dlied.qq.com	腾讯游戏数据	game
 qpic.cn	QQ图片	cdn
-
-# ---------- news ----------
 163.com	网易	news
-
-# ---------- game ----------
 game.163.com	网易游戏	game
 nie.163.com	网易游戏	game
 mihoyo.com	米哈游	game
@@ -86,8 +79,6 @@ nintendo.net	任天堂网络	game
 playstation.com	PlayStation	game
 xbox.com	Xbox	game
 supercell.com	Supercell	game
-
-# ---------- tool ----------
 icloud.com	iCloud	tool
 icloud-content.com	iCloud	tool
 apple.com	Apple	tool
@@ -132,8 +123,6 @@ oppo.com	OPPO	tool
 npmmirror.com	npm镜像	tool
 openwrt.org	OpenWrt	tool
 lan	内网设备	tool
-
-# ---------- social ----------
 weixin.qq.com	微信网页版	social
 wx.qq.com	微信	social
 weixin.com	微信	social
@@ -178,8 +167,6 @@ reddit.com	Reddit	social
 line.me	LINE	social
 snapchat.com	Snapchat	social
 pinterest.com	Pinterest	social
-
-# ---------- study ----------
 baidu.com	百度	tool
 baidupcs.com	百度网盘	study
 bdstatic.com	百度静态	study
@@ -226,8 +213,6 @@ segmentfault.com	思否	study
 runoob.com	菜鸟教程	study
 liaoxuefeng.com	廖雪峰	study
 gitee.com	Gitee	study
-
-# ---------- shop ----------
 taobao.com	淘宝	shop
 tmall.com	天猫	shop
 alicdn.com	阿里CDN	cdn
@@ -253,8 +238,6 @@ sf-express.com	顺丰	shop
 kuaidi100.com	快递100	shop
 1688.com	阿里巴巴	shop
 mogu.com	蘑菇街	shop
-
-# ---------- music ----------
 music.163.com	网易云音乐	music
 163yun.com	网易云	music
 126.net	网易资源	music
@@ -270,8 +253,6 @@ scdn.co	SpotifyCDN	music
 soundcloud.com	SoundCloud	music
 bilibili.audio	哔哩哔哩音频	music
 migu.cn	咪咕音乐	music
-
-# ---------- news ----------
 news.163.com	网易新闻	news
 sina.cn	新浪新闻	news
 sohu.com	搜狐	news
@@ -291,8 +272,6 @@ cnn.com	CNN	news
 nytimes.com	纽约时报	news
 theguardian.com	卫报	news
 reuters.com	路透社	news
-
-# ---------- novel ----------
 qidian.com	起点中文网	novel
 yuewen.com	阅文	novel
 zhangyue.com	掌阅	novel
@@ -309,8 +288,6 @@ zhangyu.com	掌阅	novel
 manhuaren.com	漫画人	novel
 baozimh.com	包子漫画	novel
 dmzj.com	动漫之家	novel
-
-# ---------- 实测补充（CDN / 统计 / 云服务） ----------
 sinaedge.com	新浪CDN	cdn
 sinajs.cn	新浪财经	news
 agoramdn.com	Agora声网	tool
@@ -319,11 +296,9 @@ alikunlun.com	阿里CDN	cdn
 alikunlun.net	阿里CDN	cdn
 akadns.net	Akamai	cdn
 akamaihd.net	Akamai	cdn
-apple-dns.cn	Apple DNS	tool
 dnse1.com	DNS 查询	cdn
 initqq.com	腾讯	social
 airwallex.com	Airwallex	shop
-tencent-cloud.net	腾讯云	tool
 tencent-cloud.com	腾讯云	tool
 app-measurement.com	广告统计	tool
 app-analytics-services.com	广告统计	tool
@@ -331,12 +306,11 @@ app-analytics-services-att.com	广告统计	tool
 appsflyersdk.com	广告统计	cdn
 forter.com	支付风控	tool
 myqcloud.com	腾讯云存储	tool
-alibabadns.com	阿里DNS	tool
+alibabadns.com	阿里DNS	cdn
 shifen.com	百度CDN	cdn
-qtlcdn.com	七牛CDN	tool
-queniukw.com	七牛CDN	tool
+qtlcdn.com	七牛CDN	cdn
+queniukw.com	七牛CDN	cdn
 amazonaws.com	AWS	cdn
-cdngslb.com	腾讯CDN	tool
 idqqimg.com	QQ图片	social
 qlogo.cn	QQ头像	social
 qqmail.com	QQ邮箱	tool
@@ -408,3 +382,54 @@ binance.info	币安	other
 tencent-cloud.net	腾讯云	cdn
 tdnsv6.com	DNS查询	cdn
 tdnsstic1.cn	CDN/DNS	cdn
+doh.pub	DNSPod DoH	cdn
+dns.pub	DNSPod DNS	cdn
+dnse2.com	DNS 查询	cdn
+tdnsv5.com	DNS 查询	cdn
+jomodns.com	DNS 查询	cdn
+ksyuncdn.com	金山云CDN	cdn
+cdngslb.com	CDN 调度	cdn
+bilicdn2.com	哔哩哔哩CDN	cdn
+biliapi.com	哔哩哔哩接口	cdn
+alibabacloud.com	阿里云	cdn
+apple-dns.cn	苹果DNS	cdn
+tlivecdn.com	腾讯直播CDN	cdn
+qiniucdn.com	七牛CDN	cdn
+bilicdn1.com	哔哩哔哩CDN	cdn
+dnse0.com	DNS调度	cdn
+dnse3.com	DNS调度	cdn
+bdydns.com	百度DNS	cdn
+tdnsvod1.cn	腾讯DNS	cdn
+wsglb0.com	腾讯GLB	cdn
+ugslb.net	优刻得GLB	cdn
+aliyuncsslb.com	阿里云SLB	cdn
+dizgslb.com	DNS调度	cdn
+volcgtm.com	火山引擎调度	cdn
+qianxun.com	DNS调度	cdn
+kunlunar.com	阿里昆仑	cdn
+kunluncan.com	阿里昆仑	cdn
+qcloudcdn.com	腾讯CDN	cdn
+bsccdn.com	蓝汛CDN	cdn
+cdnbuild.net	CDN	cdn
+queniubg.com	七牛CDN	cdn
+public.bscdnweb.com	CDN	cdn
+bnbstatic.com	CDN	cdn
+amazonaws.com.cn	AWS 中国	cdn
+cloudflare.net	Cloudflare	cdn
+miaozhen.com	秒针广告统计	cdn
+doubleclick-cn.net	Google 广告	cdn
+googlesyndication-cn.net	Google 广告	cdn
+initmm.com	广告统计	cdn
+gdmf.apple.com	苹果推送	tool
+metrics.icloud.com	iCloud 遥测	tool
+p204-imap.mail.icloud.com.cn	iCloud 邮件	tool
+www.workbuddy.cn	WorkBuddy	tool
+cmecloud.cn	招商云	tool
+inftab.com	inftab	tool
+itouc.cn	itouc	tool
+netease.com	网易	news
+jin10.com	金十数据	news
+shiyuegame.com	拾月游戏	game
+777096.xyz	代理节点	tool
+lamer.com.hk	海蓝之谜	shop
+icloud.com.cn	iCloud	tool

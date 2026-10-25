@@ -4,20 +4,23 @@
 <script src="<%=resource%>/echarts.min.js?v=1.0"></script>
 <style>
 #kw{
-  --kw-border:#e5e7eb; --kw-dim:#6b7280; --kw-faint:#9ca3af;
-  --kw-soft:#f6f7f9; --kw-soft2:#eef1f5; --kw-accent:#2885e8;
+  --kw-border:#d9dee7; --kw-dim:#667085; --kw-faint:#98a2b3;
+  --kw-soft:#f5f6f9; --kw-soft2:#e9edf3; --kw-card:#eff2f7; --kw-accent:#2885e8;
+  --kw-well:#ffffff;
   width:calc(100% - 16px); max-width:1180px; margin:0 auto 24px;
   color:inherit; font-size:14px;
 }
 [data-darkmode="true"] #kw{
   --kw-border:rgba(255,255,255,.16); --kw-dim:#9aa3b2; --kw-faint:#6b7280;
-  --kw-soft:rgba(255,255,255,.05); --kw-soft2:rgba(255,255,255,.09); --kw-accent:#4d9bf0;
+  --kw-soft:rgba(255,255,255,.05); --kw-soft2:rgba(255,255,255,.09);
+  --kw-card:rgba(255,255,255,.035); --kw-accent:#4d9bf0;
+  --kw-well:rgba(255,255,255,.055);
 }
 #kw *{box-sizing:border-box}
 #kw .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
 
 /* 顶栏 */
-#kw .kw-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;padding:14px 0 12px}
+#kw .kw-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;padding:16px 2px 12px}
 #kw .kw-title{font-size:19px;font-weight:600;line-height:1.2}
 #kw .kw-hint{display:block;font-size:12px;font-weight:400;color:var(--kw-dim);margin-top:3px}
 #kw .kw-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
@@ -29,22 +32,25 @@
 #kw .kw-btn{height:30px;padding:0 12px;border:1px solid var(--kw-border);border-radius:6px;background:transparent;color:inherit;font-size:13px;cursor:pointer}
 #kw .kw-btn:hover{background:var(--kw-soft)}
 #kw .kw-btn.pri{border-color:var(--kw-accent);color:var(--kw-accent)}
+#kw .kw-chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--kw-dim);cursor:pointer;user-select:none;white-space:nowrap}
+#kw .kw-chk input{width:14px;height:14px;margin:0;accent-color:var(--kw-accent);cursor:pointer}
+#kw .kw-chk b{font-weight:500;color:inherit}
 
-/* 页签 */
-#kw .kw-tabs{display:flex;gap:2px;border-bottom:1px solid var(--kw-border);margin-bottom:16px;overflow-x:auto}
-#kw .kw-tabs button{appearance:none;border:0;background:transparent;color:var(--kw-dim);font-size:14px;padding:9px 14px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
-#kw .kw-tabs button.on{color:inherit;font-weight:600;border-bottom-color:var(--kw-accent)}
+/* 五个视角是同一父菜单下的子页，页内不再放互跳链接 */
 
 /* 卡片 */
-#kw .kw-card{border:1px solid var(--kw-border);border-radius:8px;padding:14px 16px;margin-bottom:14px}
+#kw .kw-card{border:1px solid var(--kw-border);border-radius:10px;padding:15px 17px;margin-bottom:14px;background:var(--kw-card)}
 #kw .kw-card>h3{margin:0 0 2px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:10px}
-#kw .kw-card>h3 .sub{font-weight:400;font-size:12px;color:var(--kw-dim)}
+#kw .kw-card>h3 .sub{font-weight:400;font-size:12px;color:var(--kw-dim);margin-left:8px}
 #kw .kw-note{font-size:12px;color:var(--kw-dim);margin:6px 0 0;line-height:1.6}
 #kw .kw-empty{padding:26px 0;text-align:center;color:var(--kw-faint);font-size:13px}
+/* 卡片标题 + 右侧视图切换 */
+#kw .kw-cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+#kw .kw-cardhead>h3{flex:1;min-width:0}
 
 /* KPI */
-#kw .kw-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
-#kw .kw-kpi{border:1px solid var(--kw-border);border-radius:8px;padding:12px 14px;min-width:0}
+#kw .kw-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px}
+#kw .kw-kpi{border:1px solid var(--kw-border);border-radius:10px;padding:13px 15px;min-width:0;background:var(--kw-card)}
 #kw .kw-kpi .k{font-size:12px;color:var(--kw-dim)}
 #kw .kw-kpi .v{font-size:23px;font-weight:600;line-height:1.25;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #kw .kw-kpi .s{font-size:12px;color:var(--kw-faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -59,13 +65,16 @@
 #kw table.kw-tbl tr:last-child td{border-bottom:0}
 #kw table.kw-tbl td.r,#kw table.kw-tbl th.r{text-align:right}
 #kw table.kw-tbl tbody tr:hover{background:var(--kw-soft)}
-#kw table.kw-tbl .dom{color:var(--kw-faint);font-size:11px;margin-left:6px}
+#kw .dom{color:var(--kw-faint);font-size:11px;margin-left:6px;font-weight:400}
+#kw .nowrap{white-space:nowrap}
+/* 表格里的"网站"列：域名单独一行，避免长短不一的行高参差 */
+#kw table.kw-tbl td .dom{display:block;margin:1px 0 0}
 #kw .cat{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;border:1px solid;line-height:1.6;white-space:nowrap}
 #kw .bar{position:relative;height:6px;border-radius:3px;background:var(--kw-soft2);min-width:60px}
 #kw .bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;display:block}
 
 /* 类目条 */
-#kw .kw-catbar{display:flex;height:26px;border-radius:5px;overflow:hidden;margin:12px 0 10px;background:var(--kw-soft2)}
+#kw .kw-catbar{display:flex;height:20px;border-radius:5px;overflow:hidden;margin:12px 0 10px;background:var(--kw-soft2)}
 #kw .kw-catbar>span{display:block;height:100%}
 #kw .kw-catlegend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px}
 #kw .kw-catlegend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
@@ -88,22 +97,151 @@
 #kw .kw-live-empty{color:var(--kw-dim);font-size:13px;padding:6px 0 2px}
 #kw .dim{color:var(--kw-dim);font-style:italic}
 
-/* 夜间 */
-#kw .kw-nightrow{display:grid;grid-template-columns:120px 1fr 92px;gap:10px;align-items:center;margin-bottom:6px}
-#kw .kw-nightrow .nm{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#kw .kw-nstrip{display:flex;gap:1px;height:22px}
-#kw .kw-nstrip>i{flex:1;border-radius:1px;background:var(--kw-soft2)}
-#kw .kw-nstrip>i.q{background:transparent;border:1px solid var(--kw-soft2)}
-#kw .kw-nstrip>i.hi{outline:1.5px solid #D85A30;outline-offset:0}
-#kw .kw-nightax{display:flex;justify-content:space-between;font-size:11px;color:var(--kw-faint);margin:4px 0 0 130px}
-#kw .kw-zoom{font-size:12px;color:var(--kw-dim);text-align:right;font-variant-numeric:tabular-nums}
-#kw .kw-split{position:relative}
-#kw .kw-split::after{content:"00:00";position:absolute;left:0;top:26px;font-size:10px;color:var(--kw-faint)}
+/* ================= 夜间守卫 v2 =================
+   思路：家长早上要的是"昨晚守住了没有 / 几点几分谁还在用 / 比平时多多少"，
+   不是一张要自己解读的热力图。所以顺序是 结论 → 一夜时间带 → 事件 → 一周。 */
+#kw .kw-nhero{display:grid;grid-template-columns:54px minmax(0,1fr) auto;gap:16px;align-items:center;
+  border:1px solid var(--kw-border);border-radius:12px;background:var(--kw-card);
+  padding:15px 18px;margin-bottom:12px}
+#kw .kw-nhero .sh{width:52px;height:52px;border-radius:15px;display:flex;align-items:center;
+  justify-content:center;flex:none}
+#kw .kw-nhero .sh svg{width:25px;height:25px;display:block}
+#kw .kw-nhero.lv0 .sh{background:rgba(107,114,128,.12);color:var(--kw-dim)}
+#kw .kw-nhero.lv1 .sh{background:rgba(29,158,117,.13);color:#1D9E75}
+#kw .kw-nhero.lv2 .sh{background:rgba(200,145,26,.14);color:#B57A0C}
+#kw .kw-nhero.lv3 .sh{background:rgba(216,90,48,.14);color:#D85A30}
+#kw .kw-nhero .h{font-size:19px;font-weight:600;line-height:1.32}
+#kw .kw-nhero .p{font-size:12.5px;color:var(--kw-dim);line-height:1.72;margin-top:3px}
+#kw .kw-nhero .p b{color:inherit;font-weight:600}
+#kw .kw-nmetrics{display:grid;grid-template-columns:repeat(4,minmax(86px,auto));
+  border-left:1px solid var(--kw-border)}
+#kw .kw-nmetrics>div{padding:1px 0 1px 16px;min-width:0}
+#kw .kw-nmetrics span{display:block;font-size:11.5px;color:var(--kw-dim);white-space:nowrap}
+#kw .kw-nmetrics b{display:block;font-size:20px;font-weight:600;line-height:1.3;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+#kw .kw-nmetrics b.good{color:#1D9E75}
+#kw .kw-nmetrics b.bad{color:#D85A30}
+#kw .kw-nmetrics i{display:block;font-style:normal;font-size:11px;color:var(--kw-faint);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* 热力图（7 晚） */
-#kw .kw-heat{display:grid;grid-template-columns:96px 1fr;gap:6px 10px;align-items:center;font-size:12px}
-#kw .kw-heatrow{display:flex;gap:1px;height:16px}
-#kw .kw-heatrow>i{flex:1;border-radius:1px;background:var(--kw-soft2)}
+/* 日期条 */
+#kw .kw-nbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+#kw .kw-daynav{display:inline-flex;align-items:center;border:1px solid var(--kw-border);
+  border-radius:8px;overflow:hidden;background:var(--kw-card)}
+#kw .kw-daynav button{appearance:none;border:0;background:transparent;color:var(--kw-dim);
+  width:30px;height:32px;font-size:16px;line-height:1;cursor:pointer;padding:0}
+#kw .kw-daynav button:hover:not(:disabled){background:var(--kw-soft2);color:inherit}
+#kw .kw-daynav button:disabled{opacity:.3;cursor:default}
+#kw .kw-daynav select{border:0;border-left:1px solid var(--kw-border);
+  border-right:1px solid var(--kw-border);border-radius:0;height:32px;min-width:146px;
+  padding:0 8px;font-size:13px;background:transparent;color:inherit;max-width:none}
+#kw .kw-nbar .kw-nwin{font-size:12px;color:var(--kw-dim)}
+#kw .kw-nbar .kw-seg{margin-left:auto}
+
+/* 一夜时间带：标签列 112 / 轨道自适应 / 数字列 76 */
+#kw .kw-nrail{--lbl:112px;--num:76px;padding-top:2px}
+#kw .kw-rtick{position:relative;height:16px;margin:0 var(--num) 2px var(--lbl)}
+#kw .kw-rtick span{position:absolute;top:0;transform:translateX(-50%);font-size:11px;
+  color:var(--kw-dim);white-space:nowrap;font-variant-numeric:tabular-nums}
+#kw .kw-rtick span.z{color:inherit;font-weight:600}
+#kw .kw-rtick span.e{transform:none}
+#kw .kw-rtick span.e.end{transform:translateX(-100%)}
+#kw .kw-rrow{display:grid;grid-template-columns:var(--lbl) minmax(0,1fr) var(--num);
+  align-items:center;height:30px}
+#kw .kw-rname{font-size:12.5px;font-weight:600;padding-right:10px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-rmeta{font-size:11.5px;color:var(--kw-dim);text-align:right;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+#kw .kw-rmeta.hot{color:#D85A30}
+#kw .kw-rtrack{position:relative;height:20px;border-radius:5px;background:var(--kw-well);
+  box-shadow:inset 0 0 0 1px var(--kw-border)}
+#kw .kw-rsegs i{position:absolute;top:0;bottom:0;border-radius:3px;display:block}
+#kw .kw-rzero{position:absolute;top:-4px;bottom:-4px;left:20%;width:0;
+  border-left:1px dashed var(--kw-dim);opacity:.5;pointer-events:none}
+#kw .kw-rcells{position:absolute;inset:0;display:flex}
+#kw .kw-rcells b{flex:1;min-width:0;cursor:crosshair}
+#kw .kw-rcells b:hover{background:rgba(16,24,40,.07);box-shadow:inset 0 0 0 1px rgba(16,24,40,.16);
+  border-radius:2px}
+[data-darkmode="true"] #kw .kw-rcells b:hover{background:rgba(255,255,255,.10);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.24)}
+#kw .kw-nrailfoot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  margin:8px 0 0 var(--lbl);font-size:11.5px;color:var(--kw-faint)}
+#kw .kw-nrailfoot .lg{display:inline-flex;align-items:center;gap:5px}
+#kw .kw-nrailfoot .lg i{width:9px;height:9px;border-radius:2px;display:inline-block}
+#kw .kw-nrailfoot .zero{display:inline-flex;align-items:center;gap:5px}
+#kw .kw-nrailfoot .zero s{width:14px;height:0;border-top:1px dashed var(--kw-border);display:inline-block}
+
+/* 悬停浮层：这一格到底发生了什么 */
+#kw .kw-ntip{position:fixed;z-index:9600;pointer-events:none;display:none;
+  background:#fff;border:1px solid var(--kw-border);border-radius:8px;padding:8px 11px;
+  box-shadow:0 10px 28px rgba(16,24,40,.16);font-size:12px;min-width:152px}
+[data-darkmode="true"] #kw .kw-ntip{background:#1f2430;box-shadow:0 10px 28px rgba(0,0,0,.5)}
+#kw .kw-ntip .th{font-size:12.5px;font-weight:600;margin-bottom:4px;white-space:nowrap}
+#kw .kw-ntip .tr{display:flex;justify-content:space-between;gap:20px;line-height:1.7}
+#kw .kw-ntip .tr span{color:var(--kw-dim)}
+#kw .kw-ntip .tr b{font-weight:600;font-variant-numeric:tabular-nums}
+
+/* 事件（证据链） */
+#kw .kw-nev{border:1px solid var(--kw-border);border-radius:9px;margin-bottom:8px;overflow:hidden}
+#kw .kw-nev:last-child{margin-bottom:0}
+#kw .kw-nev>summary{list-style:none;cursor:pointer;display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;
+  padding:10px 12px;font-size:12.5px;position:relative}
+#kw .kw-nev>summary::-webkit-details-marker{display:none}
+#kw .kw-nev>summary::before{content:"";position:absolute;left:5px;top:50%;
+  width:2px;height:16px;margin-top:-8px;border-radius:1px;background:#D85A30;opacity:.75}
+#kw .kw-nev.mild>summary::before{background:#C8911A;opacity:.6}
+#kw .kw-nev>summary:hover{background:var(--kw-soft)}
+#kw .kw-nevt{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:6px}
+#kw .kw-nevw{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-nevw em{font-style:normal;font-weight:400;color:var(--kw-dim);margin-left:7px;font-size:11.5px}
+#kw .kw-nevd{font-size:12px;color:var(--kw-dim);white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+#kw .kw-nevb{padding:0 12px 11px 18px;display:flex;flex-wrap:wrap;gap:6px;
+  font-size:11.5px;color:var(--kw-dim)}
+#kw .kw-nevb span{background:var(--kw-soft2);border-radius:5px;padding:2px 7px;
+  white-space:nowrap;font-variant-numeric:tabular-nums}
+#kw .kw-nevb span.acc{background:rgba(216,90,48,.10);color:#C2532C}
+#kw .kw-nevb span.ok{background:rgba(29,158,117,.10);color:#17795A}
+#kw .kw-nevb p{flex:1 1 100%;margin:2px 0 0;line-height:1.65;color:var(--kw-faint)}
+#kw .kw-nnone{padding:22px 14px;text-align:center;color:var(--kw-dim);font-size:12.5px;
+  line-height:1.8;border:1px dashed var(--kw-border);border-radius:9px}
+#kw .kw-nnone b{display:block;font-size:14px;font-weight:600;color:inherit;margin-bottom:2px}
+
+/* 一周对比 */
+#kw .kw-wk{display:flex;flex-direction:column;gap:2px}
+#kw .kw-wkrow{display:grid;grid-template-columns:88px repeat(7,minmax(0,1fr));gap:5px;
+  align-items:center;padding:3px 0}
+#kw .kw-wkrow.hd{padding-bottom:5px}
+#kw .kw-wkrow .nm{font-size:11.5px;color:var(--kw-dim);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-wkrow .dy{font-size:10.5px;color:var(--kw-faint);text-align:center;
+  font-variant-numeric:tabular-nums}
+#kw .kw-wkc{height:30px;border-radius:6px;background:var(--kw-soft);
+  cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center;
+  font-size:10.5px;font-variant-numeric:tabular-nums;border:1px solid transparent;
+  transition:border-color .12s}
+#kw .kw-wkc:hover{border-color:var(--kw-faint)}
+#kw .kw-wkc.on{border-color:var(--kw-accent);box-shadow:inset 0 0 0 1px var(--kw-accent)}
+#kw .kw-wkc.empty{color:var(--kw-faint)}
+#kw .kw-wkft{margin-top:8px;font-size:11.5px;color:var(--kw-faint);line-height:1.65}
+
+/* 判定口径：折叠，默认收着，不抢版面 */
+#kw .kw-why{border:1px solid var(--kw-border);border-radius:10px;margin-bottom:14px;
+  background:var(--kw-card)}
+#kw .kw-why>summary{list-style:none;cursor:pointer;padding:11px 16px;font-size:12.5px;
+  font-weight:600;display:flex;align-items:center;gap:8px}
+#kw .kw-why>summary::-webkit-details-marker{display:none}
+#kw .kw-why>summary::after{content:"展开";margin-left:auto;font-weight:400;
+  font-size:11.5px;color:var(--kw-faint)}
+#kw .kw-why[open]>summary::after{content:"收起"}
+#kw .kw-why>summary .sub{font-weight:400;font-size:11.5px;color:var(--kw-faint)}
+#kw .kw-why .bd{padding:0 16px 14px;font-size:12px;line-height:1.85;color:var(--kw-dim)}
+#kw .kw-why .bd b{color:inherit;font-weight:600}
+#kw .kw-why .bd ul{margin:0;padding-left:18px}
+#kw .kw-why .bd li{margin:2px 0}
+#kw .kw-why .bd code{font-family:inherit;background:var(--kw-soft2);border-radius:3px;
+  padding:0 4px;font-size:11.5px}
 
 /* 设备行内编辑 */
 #kw .kw-devin{height:26px;border:1px solid transparent;border-radius:5px;background:transparent;color:inherit;font-size:13px;padding:0 5px;width:100%;max-width:150px}
@@ -128,18 +266,260 @@
 #kw .kw-tip ul{margin:4px 0 0;padding-left:18px}
 #kw .kw-tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;background:var(--kw-soft2);color:var(--kw-dim);margin-left:6px}
 
+/* ---------- 概览：结论条 + 左右分块 ----------
+   旧版是"四个等宽盒子 + 三段上下堆"，四个盒子的边框把一行数切成四块，
+   下半部分又因为卡片被拉齐而各留一大片空白。现在：
+   ① 一行结论（大字 + 右上三个小格，无边框，只用一条底边线）
+   ② 左 1.62 : 右 1 —— 主图在左，右栏上下两块（此刻在线吃满、类目条垫底）
+   ③ 左 1 : 右 1.62 —— 设备短、网站长，让网站表占宽的那侧 */
+#kw .kw-ovhead{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 30px;
+  align-items:end;padding:0 2px 13px;border-bottom:1px solid var(--kw-border);margin-bottom:14px}
+#kw .kw-ovhead .k{font-size:11.5px;color:var(--kw-dim);letter-spacing:.02em}
+#kw .kw-ovbig b{display:block;font-size:27px;font-weight:600;line-height:1.15;margin-top:2px;letter-spacing:-.02em}
+#kw .kw-ovbig i{display:block;font-style:normal;font-size:11px;color:var(--kw-faint);margin-top:1px}
+#kw .kw-ovcells{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 28px;
+  max-width:560px;margin-left:auto}
+#kw .kw-ovcells>div{min-width:0}
+#kw .kw-ovcells span{display:block;font-size:11.5px;color:var(--kw-dim)}
+#kw .kw-ovcells b{display:block;font-size:17px;font-weight:600;line-height:1.3;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#kw .kw-ovcells i{display:block;font-style:normal;font-size:11px;color:var(--kw-faint);margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#kw .kw-ovmain{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:14px;
+  align-items:stretch;margin-bottom:14px}
+#kw .kw-ovmain>.kw-card,#kw .kw-ovside>.kw-card,#kw .kw-ovfoot>.kw-card{margin-bottom:0;
+  display:flex;flex-direction:column;min-width:0}
+#kw .kw-ovside{display:flex;flex-direction:column;gap:14px;min-width:0}
+#kw .kw-ovside>.kw-live{flex:1;min-height:0}
+#kw .kw-ovside .kw-live-list{flex:1;min-height:0;overflow:auto}
+#kw .kw-ovfoot{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.62fr);gap:14px;align-items:stretch}
+#kw .kw-devs{flex:1;display:flex;flex-direction:column;min-height:0}
+/* 设备条数比网站行数少，让它按条均分把卡片填满，而不是底部空一块 */
+#kw .kw-devs .kw-devrow{flex:0 0 auto;align-content:center;padding:10px 0}
+#kw .kw-devs .kw-devrow .nm{font-size:13px}
+#kw .kw-devs .kw-devrow .vv{font-size:12.5px}
+#kw .kw-devs .kw-devrow .bar{height:8px;border-radius:4px}
+#kw .kw-devs .kw-devrow .bar>i{border-radius:4px}
+
+/* ---------- 两栏 ---------- */
+#kw .kw-split{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;align-items:start;margin-bottom:0}
+#kw .kw-split.even{grid-template-columns:1fr 1fr}
+#kw .kw-split.narrow-r{grid-template-columns:1.9fr 1fr}
+#kw .kw-split>*{margin-bottom:14px;min-width:0}
+
+/* ---------- 此刻在线（窄栏紧凑版） ---------- */
+#kw .kw-lc{display:grid;grid-template-columns:7px 1fr auto;gap:2px 9px;padding:8px 0;
+  border-top:1px solid var(--kw-border);align-items:center}
+#kw .kw-lc:first-child{border-top:0;padding-top:2px}
+#kw .kw-lc .dot{width:7px;height:7px;border-radius:50%;background:#1D9E75;align-self:center}
+#kw .kw-lc .who{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-lc .who em{font-style:normal;font-weight:400;color:var(--kw-accent);margin-left:6px;font-size:12px}
+#kw .kw-lc .rate{font-size:12px;color:var(--kw-dim);font-variant-numeric:tabular-nums;white-space:nowrap}
+#kw .kw-lc .url{grid-column:2/-1;font-size:11.5px;color:var(--kw-faint);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-lc.idle .dot{background:var(--kw-faint)}
+
+/* ---------- 设备排行 ---------- */
+#kw .kw-devrow{display:grid;grid-template-columns:1fr auto;gap:3px 8px;padding:8px 0;
+  border-top:1px solid var(--kw-border)}
+#kw .kw-devrow:first-child{border-top:0;padding-top:2px}
+#kw .kw-devrow .nm{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-devrow .vv{font-size:12px;color:var(--kw-dim);font-variant-numeric:tabular-nums}
+#kw .kw-devrow .bar{grid-column:1/-1}
+
+/* ---------- 网站明细：左侧筛选栏 ---------- */
+#kw .kw-rail{display:grid;grid-template-columns:198px 1fr;gap:14px;align-items:start}
+#kw .kw-side{border:1px solid var(--kw-border);border-radius:10px;padding:12px 12px 14px;background:var(--kw-card)}
+#kw .kw-side h4{margin:0 0 7px;font-size:11.5px;font-weight:600;color:var(--kw-dim);letter-spacing:.03em}
+#kw .kw-side h4 .sub{font-weight:400;margin-left:6px;opacity:.85}
+#kw .kw-side h4+h4{margin-top:15px}
+#kw .kw-cats{display:flex;flex-direction:column;gap:1px}
+#kw .kw-cats button{appearance:none;border:0;background:transparent;color:inherit;text-align:left;
+  font-size:13px;padding:6px 8px;border-radius:5px;cursor:pointer;display:flex;align-items:center;gap:7px}
+#kw .kw-cats button:hover{background:var(--kw-soft)}
+#kw .kw-cats button.on{background:var(--kw-soft2);font-weight:600}
+#kw .kw-cats button i{width:7px;height:7px;border-radius:2px;flex:none}
+#kw .kw-cats button b{margin-left:auto;font-weight:400;font-size:11px;color:var(--kw-faint);font-variant-numeric:tabular-nums}
+#kw .kw-side .kw-seg{display:flex;width:100%}
+#kw .kw-side .kw-seg button{flex:1;text-align:center;padding:6px 0}
+#kw .kw-side input[type=text]{width:100%;max-width:none}
+#kw .kw-side .kw-btn{width:100%;margin-top:8px}
+#kw .kw-side .kw-chk{margin-top:10px;display:flex}
+
+/* ---------- 夜间：左侧摘要 ---------- */
+#kw .kw-gauge{position:relative;width:126px;height:126px;margin:4px auto 8px;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center}
+#kw .kw-gauge::before{content:"";position:absolute;inset:13px;border-radius:50%;background:var(--kw-card)}
+#kw .kw-gauge .val{position:relative;font-size:30px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+#kw .kw-gauge .val i{font-style:normal;font-size:12px;font-weight:500;color:var(--kw-dim);margin-left:2px}
+#kw .kw-gauge .lbl{position:relative;font-size:11px;color:var(--kw-dim);margin-top:4px}
+#kw .kw-facts{display:flex;flex-direction:column;margin-top:2px}
+#kw .kw-facts .row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;
+  border-top:1px solid var(--kw-border);font-size:12.5px}
+#kw .kw-facts .row:first-child{border-top:0}
+#kw .kw-facts .row span{color:var(--kw-dim)}
+#kw .kw-facts .row b{font-weight:600;font-variant-numeric:tabular-nums}
+
+/* ---------- 设备：左列表右详情 ---------- */
+#kw .kw-pick .item{display:grid;grid-template-columns:1fr auto;gap:1px 8px;padding:9px 10px;
+  border-radius:7px;cursor:pointer;border:1px solid transparent}
+#kw .kw-pick .item:hover{background:var(--kw-soft)}
+#kw .kw-pick .item.on{border-color:var(--kw-accent);background:var(--kw-soft)}
+#kw .kw-pick .item .nm{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-pick .item .ip{font-size:11.5px;color:var(--kw-faint);font-variant-numeric:tabular-nums;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-pick .item .vv{font-size:12px;color:var(--kw-dim);font-variant-numeric:tabular-nums;grid-row:1;grid-column:2}
+#kw .kw-pick .item .ip{grid-column:1}
+#kw .kw-pick .item .vv{grid-row:2;grid-column:2}
+
+/* ---------- 系统：三列卡片 ---------- */
+#kw .kw-sysgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+#kw .kw-syscard{border:1px solid var(--kw-border);border-radius:10px;padding:13px 15px 4px;background:var(--kw-card)}
+#kw .kw-syscard .k{font-size:12px;color:var(--kw-dim)}
+#kw .kw-syscard .v{font-size:26px;font-weight:600;line-height:1.15;font-variant-numeric:tabular-nums}
+#kw .kw-syscard .s{font-size:11.5px;color:var(--kw-faint);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#kw .kw-syscard .spark{height:74px;margin:4px -8px 0}
+
+/* ---------- 上网详单：结论条 ---------- */
+#kw .kw-wsum{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--kw-border);
+  border-radius:10px;background:var(--kw-card);overflow:hidden;margin-bottom:12px}
+#kw .kw-wsum .cell{padding:12px 16px;border-left:1px solid var(--kw-border);min-width:0}
+#kw .kw-wsum .cell:first-child{border-left:0}
+#kw .kw-wsum span{display:block;font-size:11.5px;color:var(--kw-dim);letter-spacing:.02em}
+#kw .kw-wsum b{display:block;font-size:23px;font-weight:600;line-height:1.25;margin-top:3px;
+  font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#kw .kw-wsum i{display:block;font-style:normal;font-size:11px;color:var(--kw-faint);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- 上网详单：设备带 ---------- */
+#kw .kw-wdevs{display:flex;gap:8px;overflow-x:auto;padding:1px 1px 9px;scrollbar-width:thin}
+#kw .kw-wdev{flex:none;width:152px;border:1px solid var(--kw-border);border-radius:9px;background:var(--kw-card);
+  padding:9px 11px 9px;cursor:pointer;display:grid;grid-template-columns:22px 1fr;gap:2px 8px;align-items:center}
+#kw .kw-wdev .av{width:22px;height:22px;border-radius:6px;background:var(--kw-soft2);color:var(--kw-dim);
+  font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
+#kw .kw-wdev .nm{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-wdev .vv{grid-column:1/-1;font-size:11.5px;color:var(--kw-dim);font-variant-numeric:tabular-nums;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-wdev .bar{grid-column:1/-1;height:3px;border-radius:2px;background:var(--kw-soft2);overflow:hidden}
+#kw .kw-wdev .bar>i{display:block;height:100%;background:var(--kw-accent)}
+#kw .kw-wdev:hover{border-color:var(--kw-faint)}
+#kw .kw-wdev.on{border-color:var(--kw-accent);box-shadow:inset 0 0 0 1px var(--kw-accent)}
+#kw .kw-wdev.on .av{background:var(--kw-accent);color:#fff}
+#kw .kw-wdev.on .bar>i{background:var(--kw-accent)}
+
+/* ---------- 上网详单：工具条 ---------- */
+#kw .kw-wbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+#kw .kw-wcats{display:flex;gap:6px;flex:1 1 320px;min-width:0;overflow-x:auto;padding:1px 0 2px;scrollbar-width:none}
+#kw .kw-wcats::-webkit-scrollbar{display:none}
+#kw .kw-wcats button{flex:none;appearance:none;border:1px solid var(--kw-border);background:var(--kw-card);
+  color:var(--kw-dim);height:28px;padding:0 11px;border-radius:14px;font-size:12px;cursor:pointer;
+  display:flex;align-items:center;gap:6px;white-space:nowrap}
+#kw .kw-wcats button i{width:6px;height:6px;border-radius:50%;flex:none}
+#kw .kw-wcats button b{font-weight:400;font-size:11px;color:var(--kw-faint);font-variant-numeric:tabular-nums}
+#kw .kw-wcats button:hover{border-color:var(--kw-faint)}
+#kw .kw-wcats button.on{background:var(--kw-soft2);color:var(--kw-ink);border-color:var(--kw-faint);font-weight:600}
+#kw .kw-wcats button.kw-hide{display:none}
+#kw .kw-wcatmore{flex:none;font-size:12px;color:var(--kw-faint);padding:0 2px}
+#kw .kw-wtools{display:flex;align-items:center;gap:7px;flex:none;margin-left:auto}
+#kw .kw-wtools .kw-seg button{height:28px;font-size:12px}
+#kw .kw-wfind input{width:186px;height:28px;border:1px solid var(--kw-border);border-radius:14px;
+  background:transparent;color:inherit;font-size:12px;padding:0 12px}
+#kw .kw-wfind input:focus{outline:0;border-color:var(--kw-faint)}
+#kw .kw-wico{height:28px;border:1px solid var(--kw-border);background:var(--kw-card);color:var(--kw-dim);
+  border-radius:14px;font-size:12px;padding:0 11px;cursor:pointer;white-space:nowrap}
+#kw .kw-wico:hover{color:var(--kw-ink);border-color:var(--kw-faint)}
+#kw .kw-wtools .kw-chk{margin:0;font-size:12px;color:var(--kw-dim);white-space:nowrap}
+
+/* ---------- 上网详单：明细表 ---------- */
+#kw .kw-wlist{padding:0 0 2px}
+#kw .kw-wlist .kw-cardhead{padding:12px 16px 9px;border-bottom:1px solid var(--kw-border);margin:0}
+#kw .kw-whint{font-size:11.5px;color:var(--kw-faint);white-space:nowrap}
+#kw .kw-wtbl{width:100%;border-collapse:collapse;font-size:13px}
+#kw .kw-wtbl thead th{text-align:left;font-weight:500;color:var(--kw-dim);font-size:11.5px;
+  letter-spacing:.03em;padding:8px 14px;border-bottom:1px solid var(--kw-border);white-space:nowrap}
+#kw .kw-wtbl thead th.r{text-align:right}
+#kw .kw-wtbl tbody td{padding:9px 14px;border-bottom:1px solid var(--kw-border);vertical-align:middle}
+#kw .kw-wtbl tbody tr:last-child td{border-bottom:0}
+#kw .kw-wtbl tbody tr.wr{cursor:pointer}
+#kw .kw-wtbl tbody tr.wr:hover{background:var(--kw-soft)}
+#kw .kw-wtbl tbody tr.wr.on{background:var(--kw-soft)}
+#kw .kw-wtbl tbody tr.wr.on td:first-child{box-shadow:inset 3px 0 0 var(--kw-accent)}
+#kw .kw-wsite{display:flex;align-items:center;gap:9px;min-width:0}
+#kw .kw-wsite .av{width:24px;height:24px;border-radius:7px;flex:none;display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:600;color:#fff}
+#kw .kw-wsite .t{min-width:0}
+#kw .kw-wsite .t b{display:block;font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-wsite .t em{display:block;font-style:normal;font-size:11px;color:var(--kw-faint);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-wdur{display:flex;align-items:center;gap:10px;min-width:158px}
+#kw .kw-wdur .bar{flex:1;height:5px;border-radius:3px;background:var(--kw-soft2);overflow:hidden;min-width:56px}
+#kw .kw-wdur .bar>i{display:block;height:100%;border-radius:3px}
+#kw .kw-wdur b{font-weight:600;font-variant-numeric:tabular-nums;font-size:12.5px;
+  white-space:nowrap;min-width:62px;text-align:right}
+#kw .kw-wdevchip{display:inline-block;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:11.5px;color:var(--kw-dim);background:var(--kw-soft2);border-radius:5px;padding:2px 7px}
+#kw .kw-wtbl tr.wx>td{padding:0;background:var(--kw-soft)}
+#kw .kw-wxbox{padding:11px 18px 13px 21px;box-shadow:inset 3px 0 0 var(--kw-accent)}
+#kw .kw-wxbox .wxh{font-size:12.5px;font-weight:600;margin-bottom:2px}
+#kw .kw-wxbox .wxh .sub{font-weight:400;margin-left:8px;font-size:11px;color:var(--kw-faint)}
+#kw .kw-on{font-size:11.5px;color:#1D9E75;background:#1D9E7514;border:1px solid #1D9E7533;
+  border-radius:5px;padding:2px 7px;white-space:nowrap}
+#kw .kw-off{font-size:11.5px;color:var(--kw-faint)}
+#kw .kw-wxbox .kw-tl{margin:8px 0 3px}
+
+@media (max-width:960px){
+  #kw .kw-split,#kw .kw-split.even,#kw .kw-split.narrow-r{grid-template-columns:1fr}
+  #kw .kw-rail{grid-template-columns:1fr}
+  #kw .kw-side .kw-cats{flex-direction:row;flex-wrap:wrap}
+  #kw .kw-side .kw-cats button b{display:none}
+  #kw .kw-sysgrid{grid-template-columns:1fr}
+  #kw .kw-nhero{grid-template-columns:44px minmax(0,1fr)}
+  #kw .kw-nhero .sh{width:44px;height:44px;border-radius:12px}
+  #kw .kw-nmetrics{grid-column:1/-1;border-left:0;border-top:1px solid var(--kw-border);
+    margin-top:4px;padding-top:10px;grid-template-columns:repeat(4,1fr)}
+  #kw .kw-nmetrics>div{padding:0 10px 0 0}
+}
 @media (max-width:860px){
   #kw{width:calc(100% - 12px)}
   #kw .kw-kpis{grid-template-columns:1fr 1fr}
   #kw .kw-grid2{grid-template-columns:1fr}
-  #kw .kw-nightrow{grid-template-columns:74px 1fr 56px}
-  #kw .kw-nightax{margin-left:84px}
+  /* 概览：窄屏一律单列，结论条从"左大右小"改成上下 */
+  #kw .kw-ovmain,#kw .kw-ovfoot{grid-template-columns:1fr}
+  #kw .kw-ovhead{grid-template-columns:1fr;gap:10px;align-items:start}
+  #kw .kw-ovcells{justify-content:flex-start;gap:26px;margin-top:2px}
+  #kw .kw-ovcells>div{text-align:left}
+  #kw .kw-nmetrics{grid-template-columns:1fr 1fr;gap:8px 0}
+  #kw .kw-nrail{--lbl:74px;--num:52px}
+  #kw .kw-rname{font-size:11.5px}
+  #kw .kw-wkrow{grid-template-columns:64px repeat(7,minmax(0,1fr));gap:3px}
+  #kw .kw-wkc{height:26px;font-size:10px}
+}
+
+/* 设备与统计方式：弹层，不占正文版面 */
+#kw .kwdm{position:fixed;inset:0;z-index:9500;display:none}
+#kw .kwdm.on{display:block}
+#kw .kwdm-mask{position:absolute;inset:0;background:rgba(16,19,26,.46)}
+#kw .kwdm-box{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(920px,94vw);max-height:84vh;display:flex;flex-direction:column;
+  background:#fff;border:1px solid var(--kw-border);border-radius:12px;
+  box-shadow:0 20px 56px rgba(0,0,0,.28);overflow:hidden}
+[data-darkmode="true"] #kw .kwdm-box{background:#1b1f27}
+#kw .kwdm-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding:16px 18px 12px;border-bottom:1px solid var(--kw-border)}
+#kw .kwdm-head h3{margin:0;font-size:15px;font-weight:600}
+#kw .kwdm-head h3 .sub{margin-left:8px;font-size:12px;font-weight:400;color:var(--kw-dim)}
+#kw .kwdm .kw-note{margin:12px 18px 6px}
+#kw .kwdm-body{overflow:auto;padding:0 18px 18px}
+#kw .kwdm-body .kw-tbl{width:100%}
+@media (max-width:860px){
+  #kw .kwdm-box{width:96vw;max-height:88vh}
+  #kw .kwdm-body{padding:0 10px 12px}
 }
 </style>
 
 <div id="kw">
   <div class="kw-head">
-    <div class="kw-title"><span id="kw-title">家长看板</span><span class="kw-hint" id="kw-hint">正在读取…</span></div>
+    <div class="kw-title"><span id="kw-title">守护视图</span><span class="kw-hint" id="kw-hint">正在读取…</span></div>
     <div class="kw-tools">
       <select id="kw-dev"></select>
       <div class="kw-seg" id="kw-rng">
@@ -152,149 +532,227 @@
     </div>
   </div>
 
-  <div class="kw-tabs" id="kw-tabs">
-    <button data-t="ov" class="on">概览</button>
-    <button data-t="web">网站明细</button>
-    <button data-t="night">夜间守卫</button>
-    <button data-t="dev">设备</button>
-    <button data-t="sys">系统</button>
-  </div>
-
   <!-- ================= 概览 ================= -->
   <div data-pane="ov">
-    <div class="kw-kpis">
-      <div class="kw-kpi"><div class="k">上网时长</div><div class="v num" id="k-dur">—</div><div class="s" id="k-dur-s">合计活跃时间</div></div>
-      <div class="kw-kpi"><div class="k">流量</div><div class="v num" id="k-by">—</div><div class="s" id="k-by-s">上行 + 下行</div></div>
-      <div class="kw-kpi"><div class="k">访问站点</div><div class="v num" id="k-site">—</div><div class="s" id="k-site-s">去重后的站点数</div></div>
-      <div class="kw-kpi"><div class="k">最常访问</div><div class="v" id="k-top">—</div><div class="s" id="k-top-s">按时长</div></div>
+    <!-- ① 今日结论条：一行读完"用了多久 / 多少流量 / 去过几个站 / 最常去哪" -->
+    <div class="kw-ovhead">
+      <div class="kw-ovbig">
+        <div class="k">今天累计上网</div>
+        <div><b class="num" id="k-dur">—</b><i id="k-dur-s">合计活跃时间</i></div>
+      </div>
+      <div class="kw-ovcells">
+        <div><span>流量</span><b class="num" id="k-by">—</b><i id="k-by-s">上行 + 下行</i></div>
+        <div><span>访问站点</span><b class="num" id="k-site">—</b><i id="k-site-s">个域名</i></div>
+        <div><span>最常访问</span><b id="k-top">—</b><i id="k-top-s">按时长</i></div>
+      </div>
     </div>
 
-    <!-- 此刻在线：直接消费固件 DPI 的实时连接快照，补上"正在看什么"这个视角 -->
-    <section class="kw-card kw-live" id="ov-live-card">
-      <h3>此刻在线<span class="sub" id="ov-live-sub">DPI 实时快照 · 每 15 秒刷新</span></h3>
-      <div class="kw-live-list" id="ov-live"></div>
-    </section>
-
-    <div class="kw-grid2">
-      <section class="kw-card">
-        <h3>类目分布<span class="sub">按时长</span></h3>
-        <div class="kw-catbar" id="ov-catbar"></div>
-        <div class="kw-catlegend" id="ov-catlegend"></div>
-      </section>
+    <!-- ② 左：一天里的节奏（主图）；右：此刻在线 + 时间花在哪 -->
+    <div class="kw-ovmain">
       <section class="kw-card">
         <h3>一天里的节奏<span class="sub">按时段 · 按类目堆叠</span></h3>
-        <div id="ov-hours" class="kw-chart" style="height:214px"></div>
+        <div id="ov-hours" class="kw-chart" style="height:300px"></div>
         <p class="kw-note" id="ov-hours-note"></p>
       </section>
+      <div class="kw-ovside">
+        <!-- 此刻在线：直接消费固件 DPI 的实时连接快照，补上"正在看什么"这个视角 -->
+        <section class="kw-card kw-live" id="ov-live-card">
+          <h3>此刻在线<span class="sub" id="ov-live-sub">DPI 快照</span></h3>
+          <div class="kw-live-list" id="ov-live"></div>
+        </section>
+        <section class="kw-card">
+          <h3>时间花在哪<span class="sub">按类目</span></h3>
+          <div class="kw-catbar" id="ov-catbar"></div>
+          <div class="kw-catlegend" id="ov-catlegend"></div>
+        </section>
+      </div>
     </div>
 
-    <section class="kw-card">
-      <h3>最常去的网站<span class="sub" id="ov-top-sub">前 10 名 · 不含 CDN/基础服务</span></h3>
-      <table class="kw-tbl" id="ov-top"></table>
-    </section>
+    <!-- ③ 左：设备时长；右：最常去的网站 -->
+    <div class="kw-ovfoot">
+      <section class="kw-card">
+        <div class="kw-cardhead">
+          <h3>设备<span class="sub">按时长 · 点一台看明细</span></h3>
+          <button class="kw-btn" data-open="devset">设备设置</button>
+        </div>
+        <div class="kw-devs" id="ov-devs"><div class="kw-empty">读取中…</div></div>
+      </section>
+      <section class="kw-card">
+        <h3>最常去的网站<span class="sub" id="ov-top-sub">前 8 名 · 不含 CDN/基础服务</span></h3>
+        <table class="kw-tbl" id="ov-top"></table>
+      </section>
+    </div>
   </div>
 
-  <!-- ================= 网站明细 ================= -->
+  <!-- ================= 上网详单（原「网站明细」+「设备」合并） ================= -->
   <div data-pane="web" style="display:none">
-    <section class="kw-card">
-      <h3>筛选
-        <span class="sub">
-          <select id="web-cat" style="height:26px">
-            <option value="all">全部类目</option>
-            <option value="video">视频</option><option value="game">游戏</option>
-            <option value="social">社交</option><option value="study">学习</option>
-            <option value="shop">购物</option><option value="music">音乐</option>
-            <option value="novel">小说</option><option value="news">资讯</option>
-            <option value="tool">工具</option><option value="other">未分类</option>
-            <option value="cdn">网络服务</option>
-          </select>
-        </span>
-      </h3>
-      <div class="kw-tools" style="margin:10px 0 6px">
+
+    <!-- 结论先行：四个数讲完这一天，再往下才是明细 -->
+    <div class="kw-wsum">
+      <div class="cell"><span>今日累计上网</span><b id="ws-dur">—</b><i id="ws-dur-i">&nbsp;</i></div>
+      <div class="cell"><span>有活动的设备</span><b id="ws-dev">—</b><i id="ws-dev-i">&nbsp;</i></div>
+      <div class="cell"><span id="ws-site-k">访问过的站点</span><b id="ws-site">—</b><i id="ws-site-i">&nbsp;</i></div>
+      <div class="cell"><span>时间花在哪</span><b id="ws-top">—</b><i id="ws-top-i">&nbsp;</i></div>
+    </div>
+
+    <!-- 设备带：横向卡片代替原来的左侧竖列表，宽屏不浪费横向空间 -->
+    <div class="kw-wdevs" id="web-devs"><div class="kw-empty" style="padding:12px 2px;font-size:12px">读取中…</div></div>
+
+    <!-- 工具条：类目 chips 一行排开，右端是排序 / 搜索 / 导出 -->
+    <div class="kw-wbar">
+      <div class="kw-wcats" id="web-cats"></div>
+      <div class="kw-wtools">
         <div class="kw-seg" id="web-met">
-          <button data-m="dur" class="on">按时长</button>
-          <button data-m="by">按流量</button>
-          <button data-m="n">按次数</button>
+          <button data-m="dur" class="on">时长</button>
+          <button data-m="n">次数</button>
         </div>
-        <input type="text" id="web-q" placeholder="搜索网站 / 域名" style="width:180px">
-        <button class="kw-btn" id="web-csv">导出 CSV</button>
+        <label class="kw-wfind"><input type="text" id="web-q" placeholder="搜索站点 / 域名 / 应用"></label>
+        <label class="kw-chk" title="CDN、DNS 调度、系统心跳这类后台连接不算真正在用，默认不显示">
+          <input type="checkbox" id="web-hidecdn" checked><b>基础服务</b>
+        </label>
+        <button class="kw-wico" id="web-csv" title="导出当前筛选条件下的全部记录">导出</button>
+        <button class="kw-wico" data-open="devset" title="别名、角色、统计口径">设备设置</button>
       </div>
-      <table class="kw-tbl" id="web-tbl"></table>
+    </div>
+
+    <!-- 明细：点一行就地展开时间线，不再跳到表格外面 -->
+    <section class="kw-card kw-wlist">
+      <div class="kw-cardhead">
+        <h3 id="web-head"><span id="web-head-t">全部设备</span><span class="sub" id="web-total"></span></h3>
+        <div class="kw-seg" id="web-view">
+          <button data-v="app" class="on">按应用</button>
+          <button data-v="dom">按域名</button>
+        </div>
+      </div>
+      <table class="kw-tbl kw-wtbl" id="web-tbl"></table>
       <div class="kw-pager">
-        <span id="web-total"></span>
         <button id="web-prev">上一页</button>
         <span id="web-page"></span>
         <button id="web-next">下一页</button>
       </div>
-      <div class="kw-drill" id="web-drill"></div>
     </section>
   </div>
 
-  <!-- ================= 夜间守卫 ================= -->
+  <!-- ================= 夜间守卫 =================
+       顺序按家长早上打开页面时的问法排：昨晚守住没有 → 几点几分谁还在用 → 证据 → 一周趋势 -->
   <div data-pane="night" style="display:none">
-    <section class="kw-card">
-      <h3>夜间活跃度
-        <span class="sub">
-          <select id="night-day" style="height:26px"></select>
-        </span>
-      </h3>
-      <p class="kw-note">
-        每格 5 分钟，深色代表"真的在用"——判定用的是无线空口占用（airtime）+ 新建连接 + DNS 查询 + 不同域名数，
-        <b>不是流量大小</b>，所以手机待机收推送不会被误判。
-      </p>
-      <div id="night-body" style="margin-top:12px"></div>
-      <div class="kw-nightax" id="night-ax"></div>
-      <div class="kw-catlegend" id="night-legend" style="margin-top:10px"></div>
-    </section>
 
-    <section class="kw-card">
-      <h3>最近 7 晚<span class="sub">同一时刻横向对比</span></h3>
-      <div class="kw-heat" id="night-heat"></div>
-    </section>
-
-    <section class="kw-card">
-      <h3>怎么判定的</h3>
-      <div class="kw-tip">
-        <ul>
-          <li><b>第一层：在不在用</b> —— 取 <span class="num">iw</span> 的 <span class="num">rx/tx duration</span>（射频占用微秒）。
-              待机通常 0.1%–0.5%，刷视频 5%–40%，差两个数量级。</li>
-          <li><b>第二层：用什么</b> —— DNS 查询 + conntrack 反查域名与类目；就算开了加密 DNS 看不到域名，airtime 仍然能说明"在用"。</li>
-          <li><b>基线</b> —— 每台设备学 7 晚，取 P90 作为"平时夜里静默的天花板"，超过 1.5 倍且连续两格才标记异常。</li>
-          <li><b>看不到的情况</b> —— 用蜂窝流量、离线看本地视频、屏幕亮着没联网，这三种路由器无法感知。</li>
-        </ul>
+    <!-- 1. 结论：一句话 + 四个数 -->
+    <section class="kw-nhero lv0" id="night-hero">
+      <div class="sh" id="nhero-sh"></div>
+      <div>
+        <div class="h" id="nhero-h">正在读取…</div>
+        <div class="p" id="nhero-p"></div>
+      </div>
+      <div class="kw-nmetrics">
+        <div><span>就寝后活跃</span><b id="nhero-mins">—</b><i>22:30 之后累计</i></div>
+        <div><span>最晚活动</span><b id="nhero-last">—</b><i>最后一格有网</i></div>
+        <div><span>异常事件</span><b id="nhero-ev">—</b><i id="nhero-ev-i">超过自己平时上限</i></div>
+        <div><span>对比前 7 晚</span><b id="nhero-cmp">—</b><i id="nhero-cmp-i">夜间活跃分钟</i></div>
       </div>
     </section>
-  </div>
 
-  <!-- ================= 设备 ================= -->
-  <div data-pane="dev" style="display:none">
+    <!-- 2. 日期条 -->
+    <div class="kw-nbar">
+      <div class="kw-daynav">
+        <button id="night-prev" title="前一晚">‹</button>
+        <select id="night-day"></select>
+        <button id="night-next" title="后一晚">›</button>
+      </div>
+      <span class="kw-nwin">22:30 → 次日 06:00 · 5 分钟一格</span>
+      <div class="kw-seg" id="night-mode">
+        <button data-m="score" class="on">活跃度</button>
+        <button data-m="by">流量</button>
+      </div>
+    </div>
+
+    <!-- 3. 一夜时间带：每台设备一条轨道，悬停看任意 5 分钟 -->
     <section class="kw-card">
-      <h3>设备与统计方式</h3>
-      <p class="kw-note">
-        「完整」记录到域名级，「摘要」只记总量（适合摄像头、插座这类 IoT），「忽略」完全不记。修改后立即生效。
-      </p>
-      <table class="kw-tbl" id="dev-tbl" style="margin-top:10px"></table>
+      <div class="kw-cardhead">
+        <h3>一夜时间带<span class="sub" id="night-rail-sub">谁的手机还亮着 · 鼠标停到任意一格</span></h3>
+      </div>
+      <div class="kw-nrail" id="night-rail"></div>
+      <div class="kw-nrailfoot" id="night-railfoot"></div>
     </section>
+
+    <!-- 4. 事件 + 一周 -->
+    <div class="kw-split narrow-r">
+      <section class="kw-card">
+        <h3>夜间事件<span class="sub" id="night-ev-sub">连续活跃 ≥ 10 分钟才算一件</span></h3>
+        <div id="night-events"></div>
+      </section>
+      <section class="kw-card">
+        <h3>最近 7 晚<span class="sub">数字 = 夜间活跃分钟 · 点一格切过去</span></h3>
+        <div class="kw-wk" id="night-week"></div>
+        <p class="kw-wkft" id="night-week-note"></p>
+      </section>
+    </div>
+
+    <!-- 5. 判定口径：收着，需要时才看 -->
+    <details class="kw-why">
+      <summary>怎么判定的<span class="sub">为什么"手机待机收推送"不会被算成熬夜</span></summary>
+      <div class="bd">
+        <ul>
+          <li><b>第一层：在不在用</b> —— 取无线层的 <code>rx/tx duration</code>（射频占用微秒）。
+            待机通常 0.1%–0.5%，刷视频 5%–40%，差两个数量级；保活包字节数会涨，射频占用几乎不动。</li>
+          <li><b>第二层：用了多少</b> —— 同一格内的字节数、活跃站点数、不同域名数，以及娱乐类目
+            （视频/游戏/社交/音乐/小说）占流量的比例。占比高说明不是查资料，是在玩。</li>
+          <li><b>有线设备</b> —— 手机/平板走无线才有射频占用；台式机、电视盒子这些没有，
+            对它们改用"这一格的字节数"判断，5 分钟 5MB 就算明显在用。</li>
+          <li><b>基线</b> —— 每台设备单独学 7 晚，取夜间射频占用的 P90 作为"平时夜里静默的天花板"；
+            超过 1.5 倍、且持续两格以上才标成异常。所以是<b>跟自己比</b>，不是套一个固定阈值。</li>
+          <li><b>看不到的</b> —— 关 WiFi 用蜂窝、离线看本地视频、屏幕亮着没联网，这三种路由器都无法感知。</li>
+          <li><b>具体在干什么</b> —— 域名明细在各设备的「上网详单」里；这里只给"活跃站点数 / 域名数 / 娱乐占比"这类不暴露具体网址的旁证。</li>
+        </ul>
+      </div>
+    </details>
+
+    <div class="kw-ntip" id="night-tip"></div>
   </div>
 
   <!-- ================= 系统 ================= -->
   <div data-pane="sys" style="display:none">
-    <div class="kw-kpis" style="grid-template-columns:repeat(3,1fr)">
-      <div class="kw-kpi"><div class="k">CPU 占用</div><div class="v num" id="s-cpu">—</div><div class="s" id="s-load">—</div></div>
-      <div class="kw-kpi"><div class="k">CPU 温度</div><div class="v num" id="s-tc">—</div><div class="s" id="s-tc-s">本机常态 68–72 °C</div></div>
-      <div class="kw-kpi"><div class="k">内存占用</div><div class="v num" id="s-mem">—</div><div class="s">总 233 MB</div></div>
+    <div class="kw-sysgrid">
+      <div class="kw-syscard">
+        <div class="k">CPU 占用</div><div class="v num" id="s-cpu">—</div>
+        <div class="s" id="s-load">—</div>
+        <div id="sys-cpu" class="spark"></div>
+      </div>
+      <div class="kw-syscard">
+        <div class="k">CPU 温度</div><div class="v num" id="s-tc">—</div>
+        <div class="s" id="s-tc-s">本机常态 68–72 °C</div>
+        <div id="sys-temp" class="spark"></div>
+      </div>
+      <div class="kw-syscard">
+        <div class="k">内存占用</div><div class="v num" id="s-mem">—</div>
+        <div class="s" id="s-mem-s">总 233 MB</div>
+        <div id="sys-mem" class="spark"></div>
+      </div>
     </div>
+
     <section class="kw-card">
-      <h3>CPU 使用率<span class="sub"><span class="kw-seg" id="sys-rng" style="transform:scale(.95)">
+      <h3>CPU 与温度<span class="sub"><span class="kw-seg" id="sys-rng" style="transform:scale(.95)">
         <button data-w="1h" class="on">1 小时</button><button data-w="24h">24 小时</button><button data-w="7d">7 天</button>
       </span></span></h3>
-      <div id="sys-cpu" class="kw-chart" style="height:190px"></div>
+      <div id="sys-detail" class="kw-chart" style="height:210px"></div>
+      <p class="kw-note">左轴 CPU 占用（%），右轴温度（°C）。射频温度有热惯性、约滞后 3 分钟，只看趋势，别拿绝对值对比。</p>
     </section>
-    <section class="kw-card">
-      <h3>温度<span class="sub">CPU 热点 / 2.4G / 5G</span></h3>
-      <div id="sys-temp" class="kw-chart" style="height:200px"></div>
-      <p class="kw-note">射频温度有热惯性，约滞后 3 分钟，只看趋势；CPU 与温度刻意拆成两张图，避免双 Y 轴造成的误读。</p>
-    </section>
+  </div>
+
+  <!-- 设备与统计方式：不属于任何一页的正文，做成弹层；概览的设备卡和上网详单左列各有一个入口 -->
+  <div class="kwdm" id="devset">
+    <div class="kwdm-mask" data-close></div>
+    <div class="kwdm-box" role="dialog" aria-modal="true" aria-labelledby="devset-t">
+      <div class="kwdm-head">
+        <h3 id="devset-t">设备与统计方式<span class="sub">改完立即生效，不用重启</span></h3>
+        <button class="kw-btn" data-close>关闭</button>
+      </div>
+      <p class="kw-note">
+        「完整」记录到域名级，「仅总量」只记总量（适合摄像头、插座这类 IoT），「忽略」完全不记。
+        角色会影响夜间守卫的判定松紧 —— 孩子设备管得严，智能设备不管。
+      </p>
+      <div class="kwdm-body"><table class="kw-tbl" id="dev-tbl"></table></div>
+    </div>
   </div>
 </div>
 
@@ -310,25 +768,23 @@
               cdn:'网络服务'};
   var CATORDER = ['video','game','music','novel','social','study','shop','news','tool','other','cdn'];
 
-  // 五个菜单入口共用这一份模板，靠 URL 末段决定默认打开哪个页签
-  var TABPATH = {ov:'/admin/fwx_monitor/kidwatch', web:'/admin/fwx_internet_record/kwsites',
-                 night:'/admin/fwx_parental_control/kwnight', sys:'/admin/fwx_monitor/kwsys',
-                 dev:'/admin/fwx_user/kwdev'};
-  var TABSEG = {kidwatch:'ov', kwsites:'web', kwnight:'night', kwsys:'sys', kwdev:'dev'};
-  var TABTITLE = {ov:'家长看板', web:'网站记录', night:'夜间守卫', sys:'设备状态', dev:'设备标签'};
+  // 四个视角是同一父菜单下的子页，靠 URL 末段（ov/web/night/sys）决定打开哪个。
+  // 「设备」和「网站明细」已经合成「上网详单」，所以只认四个；旧的 /dev 落到 web。
+  var TABSEG = {ov:'ov', web:'web', night:'night', sys:'sys',
+                kidwatch:'ov', kwsites:'web', kwnight:'night', kwsys:'sys', kwdev:'web',
+                dev:'web'};
+  var TABTITLE = {ov:'概览', web:'上网详单', night:'夜间守卫', sys:'运行状态'};
   function bootTab(){
-    var seg = (location.pathname.replace(/\/+$/,'').split('/').pop() || '').toLowerCase();
+    var seg = (location.pathname.replace(/\/+$/,'').split('/').pop() || '')
+                .toLowerCase().replace(/\.html$/, '');
     var q = (location.search.match(/[?&]t=(\w+)/) || [])[1];
     var t = q || TABSEG[seg] || 'ov';
     return TABTITLE[t] ? t : 'ov';
   }
-  function tabUrl(t){
-    var pre = location.pathname.indexOf('/cgi-bin/luci') === 0 ? '/cgi-bin/luci' : '';
-    return pre + (TABPATH[t] || TABPATH.ov);
-  }
 
   var S = { range:'today', mac:'all', tab:bootTab(), day:0, met:'dur', cat:'all', q:'', listTotal:0,
-            page:0, pageSize:50, hours:null, list:null, devs:[], nightDays:[] };
+            page:0, pageSize:50, hours:null, list:null, devs:[], nightDays:[],
+            devRows:[], webView:'app', flow:null };
 
   function isDark(){
     var a = document.documentElement.getAttribute('data-darkmode') ||
@@ -361,6 +817,12 @@
     if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
     return (b/1073741824).toFixed(2) + ' GB';
   }
+  // 每设备流量来自固件（get_daily_top_users），本地不累加
+  function devBy(mac){
+    var p = (S.flow && S.flow.per) || {};
+    var v = p[mac];
+    return v ? ((v.up || 0) + (v.dn || 0)) : 0;
+  }
   function hhmm(ts){
     var d = new Date(ts*1000);
     return ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
@@ -373,6 +835,18 @@
     return String(s==null?'':s).replace(/[&<>"']/g, function(c){
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
     });
+  }
+  // 设备名一律取设备表里的名字（别名 > 主机名 > MAC），跟侧栏那排"设备"页同一个来源，
+  // 免得应用表里冒出 MAC、设备页里却是名字，看着像两套数据。
+  // 注意别叫 devName：设备页已有一个 devName(x)，同名会被后定义的覆盖。
+  function devLabel(mac, host){
+    if (!mac) return host || '—';
+    var m = String(mac).toLowerCase(), hit = null;
+    (S.devs || []).forEach(function(v){
+      if (!hit && String(v.mac || '').toLowerCase() === m) hit = v;
+    });
+    if (hit && hit.name && String(hit.name).toLowerCase() !== m) return hit.name;
+    return host || mac;
   }
   function api(params, cb){
     var q = $.extend({}, params);
@@ -438,15 +912,15 @@
         var what = (app || url) ? app + url
                  : '<span class="kw-lurl">已连接，暂无应用信息</span>';
         var sig = r.wl ? (r.band ? r.band.toUpperCase() + ' ' + (r.rssi||0) + 'dBm' : '无线') : '有线';
-        h += '<div class="kw-lrow">'
-           +   '<span class="kw-lrole"></span>'
-           +   '<span class="kw-lwho" title="'+esc(r.ip||'')+'">' + esc(who) + '</span>'
-           +   '<span class="kw-lwhat">' + what + '</span>'
-           +   '<span class="kw-lrate num">↑ <b>' + fmtRate(r.up) + '</b>　↓ <b>' + fmtRate(r.down) + '</b></span>'
-           +   '<span class="kw-lsig">' + esc(sig) + '</span>'
+        var sub = r.url || (app ? '' : '已连接，暂无应用信息');
+        h += '<div class="kw-lc' + ((r.up+r.down) < 1024 ? ' idle' : '') + '" title="'+esc(who+' · '+sig)+'">'
+           +   '<span class="dot"></span>'
+           +   '<span class="who">' + esc(who) + (r.app ? '<em>' + esc(r.app) + '</em>' : '') + '</span>'
+           +   '<span class="rate num">↓ ' + fmtRate(r.down) + '</span>'
+           +   '<span class="url">' + esc(sub) + '</span>'
            + '</div>';
       });
-      $('#ov-live-sub').text('DPI 实时快照 · ' + rows.length + ' 台在线 · 每 15 秒刷新');
+      $('#ov-live-sub').text(rows.length + ' 台在线 · 15 秒刷新');
       box.html(h);
     });
   }
@@ -460,13 +934,21 @@
 
   function loadOverview(){
     loadLive();
+    // 流量不自己算，直接用固件的总数（站点级固件没有，就不显示了）
+    api({fn:'flow'}, function(e, f){
+      if (!f) return;
+      S.flow = f;
+      var tot = (f.up || 0) + (f.down || 0);
+      $('#k-by').text(fmtBy(tot));
+      $('#k-by-s').text('上行 ' + fmtBy(f.up) + ' / 下行 ' + fmtBy(f.down));
+      if (S.tab === 'dev') drawDevTable();
+    });
     api({fn:'overview', range:S.range, mac:S.mac}, function(e, d){
       var o = (d && d[0]) || {};
       $('#k-dur').text(fmtDur(o.dur));
-      $('#k-by').text(fmtBy(o.by));
       $('#k-site').text(o.sites || 0);
       $('#k-top').text(o.top_name || o.top_dom || '—');
-      $('#k-top-s').text(o.top_val ? (' ' + (S.met==='by' ? fmtBy(o.top_val) : fmtDur(o.top_val))) : '这段时间还没有记录');
+      $('#k-top-s').text(o.top_val ? (' ' + fmtDur(o.top_val)) : '这段时间还没有记录');
     });
 
     api({fn:'cats', range:S.range, mac:S.mac}, function(e, d){
@@ -502,17 +984,44 @@
       drawHours();
     });
 
-    api({fn:'top', range:S.range, mac:S.mac, met:'dur', lim:10}, function(e, d){
-      var rows = d || [];
+    api({fn:'devs'}, function(e, ds){
+      ds = (ds || []).slice();
+      if (!ds.length){ $('#ov-devs').html('<div class="kw-empty">还没有设备记录</div>'); return; }
+      ds.sort(function(a,b){ return (b.dur||0)-(a.dur||0); });
+      var mx = Math.max.apply(null, ds.map(function(x){ return x.dur||0; }).concat([1]));
+      // 同名设备（家里两台 "ADY-AL00"）会在列表里变成两条一模一样的，用 MAC 末两位区分
+      var seen = {};
+      ds.forEach(function(x){
+        var n = x.alias || x.name || x.host || x.mac;
+        seen[n] = (seen[n] || 0) + 1;
+      });
+      var h = '';
+      ds.slice(0,7).forEach(function(x){
+        var nm = x.alias || x.name || x.host || x.mac;
+        if (seen[nm] > 1 && x.mac) nm += ' · ' + String(x.mac).slice(-2);
+        var pc = (x.dur||0)/mx*100;
+        var col = x.role === 'child' ? '#378ADD' : (x.role === 'iot' ? '#B4B2A9' : '#7F77DD');
+        h += '<div class="kw-devrow">'
+           +   '<div class="nm" title="'+esc(x.mac)+'">'+esc(nm)+'</div>'
+           +   '<div class="vv num">'+fmtDur(x.dur)+'</div>'
+           +   '<div class="bar"><i style="width:'+pc.toFixed(1)+'%;background:'+col+'"></i></div>'
+           + '</div>';
+      });
+      $('#ov-devs').html(h);
+    });
+
+    // 标题写的是"不含 CDN/基础服务"，后端 top 不做这个过滤，这里按类目剔掉后取前 8
+    api({fn:'top', range:S.range, mac:S.mac, met:'dur', lim:16}, function(e, d){
+      var rows = (d || []).filter(function(x){ return x.cat !== 'cdn'; }).slice(0, 8);
       if (!rows.length){ $('#ov-top').html('<tbody><tr><td class="kw-empty">暂无记录</td></tr></tbody>'); return; }
       var max = Math.max.apply(null, rows.map(function(x){ return x.dur||0; }).concat([1]));
-      var h = '<thead><tr><th>网站</th><th>类目</th><th style="width:34%">时长占比</th><th class="r">时长</th><th class="r">流量</th></tr></thead><tbody>';
+      var h = '<thead><tr><th>网站</th><th>类目</th><th style="width:40%">时长占比</th><th class="r">时长</th><th class="r">次数</th></tr></thead><tbody>';
       rows.forEach(function(x){
         var p = (x.dur||0)/max*100;
         var col = CATC[x.cat] || CATC.other;
         h += '<tr><td>'+siteLabel(x.name, x.dom)+'</td><td>'+catTag(x.cat)+'</td>'+
              '<td><div class="bar"><i style="width:'+p.toFixed(1)+'%;background:'+col+'"></i></div></td>'+
-             '<td class="r num">'+fmtDur(x.dur)+'</td><td class="r num">'+fmtBy(x.by)+'</td></tr>';
+             '<td class="r num">'+fmtDur(x.dur)+'</td><td class="r num">'+(x.n||0)+'</td></tr>';
       });
       $('#ov-top').html(h + '</tbody>');
     });
@@ -579,46 +1088,189 @@
   }
 
   /* ---------------- 网站明细 ---------------- */
+  var CATLIST = ['all','video','game','social','study','shop','music','novel','news','tool','other','cdn'];
+  function renderCatSide(){
+    var box = $('#web-cats');
+    var h = '';
+    CATLIST.forEach(function(c){
+      var col = c === 'all' ? 'var(--kw-faint)' : (CATC[c] || CATC.other);
+      h += '<button data-c="'+c+'"'+(c===S.cat?' class="on"':'')+'>'
+         +   '<i style="background:'+col+'"></i>'
+         +   '<span>'+(c==='all' ? '全部' : (CATN[c] || '未分类'))+'</span><b></b></button>';
+    });
+    box.html(h);
+  }
+  // 顶部四个数里有两个是"当前视图"的：总时长、时间花在哪。
+  // 必须跟下面的类目条同源，否则会出现"卡片写工具 36 分、类目条写工具 16 分"。
+  function fillSummary(m, all){
+    $('#ws-dur').text(fmtH(all));
+    $('#ws-dur-i').text(S.range === 'today' ? '今天累计 · 不含基础服务' : '所选区间累计');
+    var best = null;
+    Object.keys(m).forEach(function(c){
+      if (c === 'cdn') return;
+      if (!best || m[c] > m[best]) best = c;
+    });
+    if (best && all){
+      $('#ws-top').text(CATN[best] || '未分类');
+      $('#ws-top-i').text(Math.round(m[best]/all*100) + '% · ' + fmtH(m[best]));
+    } else {
+      $('#ws-top').text('—');
+      $('#ws-top-i').text('还没有记录');
+    }
+  }
+
+  // 侧栏每个类目旁边那个时长，必须跟右边表格是同一份数据，
+  // 否则会出现"类目写着 48 分钟、列表里一条游戏都没有"这种自相矛盾。
+  function fillCatCounts(rows){
+    var m = {}, all = 0;
+    (rows||[]).forEach(function(x){
+      var c = x.cat || 'other';
+      if (c !== 'cdn') all += (x.dur||0);
+      m[c] = (m[c]||0) + (x.dur||0);
+    });
+    fillSummary(m, all);
+    $('#web-cats button').each(function(){
+      var c = $(this).data('c');
+      var has = c === 'all' ? all > 0 : !!m[c];
+      // 没有数据的类目不占地方 —— 一行 chips 才放得下，不用横向滚
+      $(this).toggleClass('kw-hide', c !== 'all' && !has);
+      $(this).find('b').text(c === 'all' ? fmtH(all) : (m[c] ? fmtH(m[c]) : ''));
+    });
+  }
+  function fillCatSide(){
+    api({fn:'cats', range:S.range, mac:S.mac}, function(e, rows){
+      var m = {}, all = 0;
+      (rows||[]).forEach(function(x){
+        m[x.cat] = x;
+        if (x.cat !== 'cdn') all += (x.dur||0);
+      });
+      fillSummary(m, all);
+      $('#web-cats button').each(function(){
+        var c = $(this).data('c');
+        $(this).toggleClass('kw-hide', c !== 'all' && !m[c]);
+        if (c === 'all'){
+          $(this).find('b').text(fmtH(all));
+        } else {
+          $(this).find('b').text(m[c] ? fmtH(m[c].dur) : '');
+        }
+      });
+    });
+  }
+
+  // 应用视角：固件 DPI 认出来的应用 + 今日累计时长，数据直接来自 fwx，
+  // 不需要域名库，也不受 DNS 缓存/预取影响。
+  function loadWebApps(){
+    var p = {fn:'apps'};
+    if (S.mac !== 'all') p.mac = S.mac;
+    api(p, function(e, d){
+      // 0 秒的行没有信息量（固件会为"只连了一下"的应用留一条）
+      var all = (d || []).filter(function(x){ return (x.dur||0) > 0; });
+      fillCatCounts(all);
+      // 应用视角没有 cdn 这一类，从域名视图带着筛选切过来会看到空表
+      if (S.cat === 'cdn'){ S.cat = 'all'; renderCatSide(); }
+      var rows = all.filter(function(x){
+        if (S.cat !== 'all' && x.cat !== S.cat) return false;
+        if (S.q){
+          var q = S.q.toLowerCase();
+          if ((x.app||'').toLowerCase().indexOf(q) < 0 &&
+              (x.host||'').toLowerCase().indexOf(q) < 0 &&
+              (x.mac||'').toLowerCase().indexOf(q) < 0) return false;
+        }
+        return true;
+      }).sort(function(a,b){ return (b.dur||0)-(a.dur||0); });
+
+      $('#web-total').text(' · 固件识别到 ' + rows.length + ' 个应用');
+      $('#ws-site-k').text('识别到的应用');
+      $('#ws-site').text(rows.length);
+      $('#ws-site-i').text('来自固件 DPI，不受 DNS 影响');
+      $('#web-page').text(''); $('#web-prev').hide(); $('#web-next').hide();
+      if (!rows.length){
+        $('#web-tbl').html('<tbody><tr><td class="kw-empty" style="padding:30px">没有匹配的应用</td></tr></tbody>');
+        return;
+      }
+      var max = Math.max.apply(null, rows.map(function(x){ return x.dur||0; }).concat([1]));
+      var h = '<thead><tr><th>应用</th><th>设备</th><th>类目</th>'+
+              '<th>今日时长</th><th class="r">状态</th></tr></thead><tbody>';
+      rows.slice(0, 200).forEach(function(x){
+        h += '<tr>'+
+          '<td>'+siteCell(x.app || ('应用 #'+x.appid), x.appid ? ('#'+x.appid) : '', x.cat)+'</td>'+
+          '<td class="nowrap"><span class="kw-wdevchip">'+esc(devLabel(x.mac, x.host))+'</span></td>'+
+          '<td>'+catTag(x.cat)+'</td>'+
+          '<td>'+durCell(x.dur, max, x.cat)+'</td>'+
+          '<td class="r">'+(x.online ? '<span class="kw-on">在线</span>' : '<span class="kw-off">—</span>')+'</td></tr>';
+      });
+      $('#web-tbl').html(h + '</tbody>');
+    });
+  }
+
   function loadWeb(){
+    // 标题跟着设备带走，省得"标题写全部设备、表格只有一台"这种错位
+    var who = '全部设备';
+    if (S.mac !== 'all'){
+      var hit = (S.devRows || []).filter(function(v){ return v.mac === S.mac; })[0];
+      who = hit ? devName(hit) : S.mac;
+    }
+    $('#web-head-t').text(who);
+    // 两种视角各管各的计数，别让域名视图的异步回调把应用视图的类目时长盖掉
+    if (S.webView === 'app') return loadWebApps();
+
+    $('#web-prev').show(); $('#web-next').show();
+    fillCatSide();
     var p = {fn:'list', range:S.range, mac:S.mac, met:S.met, lim:S.pageSize, off:S.page*S.pageSize};
     if (S.cat!=='all') p.cat = S.cat;
+    else if ($('#web-hidecdn').prop('checked')) p.nocdn = 1;
     if (S.q) p.q = S.q;
     api(p, function(e, d){
       var rows = (d && d.rows) || [];
       var total = (d && d.total) || 0;
       S.list = rows;
       S.listTotal = total;
-      var h = '<thead><tr><th>日期</th><th>设备</th><th>网站</th><th>类目</th>'+
-              '<th class="r">时长</th><th class="r">次数</th><th class="r">流量</th></tr></thead><tbody>';
+      $('#web-total').text(' · 共 ' + total + ' 个站点');
+      $('#ws-site-k').text('访问过的站点');
+      $('#ws-site').text(total);
+      $('#ws-site-i').text('DNS 与连接记录合并去重');
+
+      var showDay = S.range !== 'today';
+      var max = Math.max.apply(null, rows.map(function(x){ return x.dur||0; }).concat([1]));
+      var h = '<thead><tr>' + (showDay ? '<th>日期</th>' : '') +
+              '<th>站点</th><th>设备</th><th>类目</th><th>时长</th><th class="r">次数</th></tr></thead><tbody>';
       if (!rows.length){
-        h += '<tr><td colspan="7" class="kw-empty">没有匹配的记录</td></tr>';
+        h += '<tr><td colspan="'+(showDay?6:5)+'" class="kw-empty" style="padding:30px">没有匹配的记录</td></tr>';
       } else {
         rows.forEach(function(x){
-          h += '<tr class="roww" data-dom="'+esc(x.dom)+'" data-day="'+x.day+'" data-mac="'+esc(x.mac)+'">'+
-               '<td class="num">'+mmdd(x.day)+'</td>'+
-               '<td>'+esc(x.who)+'</td>'+
-               '<td>'+siteLabel(x.name, x.dom)+'</td>'+
+          h += '<tr class="wr" data-dom="'+esc(x.dom)+'" data-day="'+x.day+'" data-mac="'+esc(x.mac)+'">'+
+               (showDay ? '<td class="num nowrap">'+mmdd(x.day)+'</td>' : '')+
+               '<td>'+siteCell(x.name, x.dom, x.cat)+'</td>'+
+               '<td class="nowrap"><span class="kw-wdevchip">'+esc(x.who || '—')+'</span></td>'+
                '<td>'+catTag(x.cat)+'</td>'+
-               '<td class="r num">'+fmtDur(x.dur)+'</td>'+
-               '<td class="r num">'+(x.n||0)+'</td>'+
-               '<td class="r num">'+fmtBy(x.by)+'</td></tr>';
+               '<td>'+durCell(x.dur, max, x.cat)+'</td>'+
+               '<td class="r num">'+(x.n||0)+'</td></tr>';
         });
       }
       $('#web-tbl').html(h + '</tbody>');
-      $('#web-total').text('共 ' + total + ' 条');
       var pages = Math.max(1, Math.ceil(total / S.pageSize));
       $('#web-page').text((S.page+1) + ' / ' + pages);
       $('#web-prev').prop('disabled', S.page <= 0);
       $('#web-next').prop('disabled', S.page >= pages-1);
-      $('#web-drill').removeClass('on').empty();
     });
   }
 
-  function drill(dom, day, mac){
-    var d = $('#web-drill').addClass('on').html('<div class="kw-tip">读取中…</div>');
+  // 时间线就地展开在行下面，不再跳到表格外面 —— 视觉上"这一行被拉开"
+  function drill(tr, dom, day, mac){
+    var $tr = $(tr);
+    var wasOpen = $tr.hasClass('on');
+    $('#web-tbl tr.wx').remove();
+    $('#web-tbl tr.wr').removeClass('on');
+    if (wasOpen) return;
+    $tr.addClass('on');
+    var span = $tr.children('td').length;
+    var $x = $('<tr class="wx"><td colspan="'+span+'"><div class="kw-wxbox">' +
+               '<div class="kw-tip">读取明细…</div></div></td></tr>');
+    $tr.after($x);
     api({fn:'sess', day:day, dom:dom, mac:mac}, function(e, rows){
       rows = rows || [];
-      if (!rows.length){ d.html('<div class="kw-tip">这条记录没有明细（可能已超过 14 天保留期）</div>'); return; }
+      var box = $x.find('.kw-wxbox');
+      if (!rows.length){ box.html('<div class="kw-tip">这条记录没有明细（可能已超过 14 天保留期）</div>'); return; }
       var d0 = new Date(day*1000); d0.setHours(0,0,0,0);
       var base = Math.floor(d0.getTime()/1000);
       var bars = '';
@@ -628,186 +1280,711 @@
         bars += '<i style="left:'+l.toFixed(3)+'%;width:'+Math.min(w,100-l).toFixed(3)+'%" title="'+
                 hhmm(s.ts0)+'–'+hhmm(s.ts1)+' · '+fmtDur(s.dur)+' · '+fmtBy((s.up||0)+(s.dn||0))+'"></i>';
       });
-      var list = rows.slice(0, 14).map(function(s){
+      var list = rows.slice(0, 12).map(function(s){
         return hhmm(s.ts0)+'–'+hhmm(s.ts1)+' · '+fmtDur(s.dur)+' · 上行 '+fmtBy(s.up)+' / 下行 '+fmtBy(s.dn);
       }).join('<br/>');
-      d.html('<div style="font-size:13px;font-weight:600">'+esc(dom||'未识别')+' 在 '+mmdd(day)+' 的使用时间线</div>'+
-             '<div class="kw-tl">'+bars+'</div>'+
-             '<div class="kw-tlax"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>'+
-             '<div class="kw-tllist">'+list+(rows.length>14?'<br/>… 共 '+rows.length+' 段':'')+'</div>');
+      box.html('<div class="wxh">'+esc(dom||'未识别')+' · '+mmdd(day)+' 的使用时间线'+
+               '<span class="sub">共 '+rows.length+' 段</span></div>'+
+               '<div class="kw-tl">'+bars+'</div>'+
+               '<div class="kw-tlax"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>'+
+               '<div class="kw-tllist">'+list+(rows.length>12?'<br/>… 还有 '+(rows.length-12)+' 段':'')+'</div>');
     });
   }
 
-  /* ---------------- 夜间 ---------------- */
-  function nightRange(day){
-    // day = 当天 0 点；窗口 22:30 -> 次日 06:00
-    return { a: day + 22*3600 + 1800, b: day + 86400 + 6*3600 };
+  // 站长单元格 / 时长单元格：两张表共用一个视觉，列才对得齐
+  function siteCell(name, dom, cat){
+    var nm = name || dom || '未识别';
+    var sub = (name && dom && name !== dom) ? dom : '';
+    var initial = String(nm).replace(/^www\./,'').charAt(0).toUpperCase();
+    var col = CATC[cat] || CATC.other;
+    return '<div class="kw-wsite"><span class="av" style="background:'+col+'">'+esc(initial)+'</span>'+
+           '<span class="t"><b>'+esc(nm)+'</b>'+(sub ? '<em>'+esc(sub)+'</em>' : '')+'</span></div>';
+  }
+  function durCell(dur, max, cat){
+    var col = CATC[cat] || CATC.other;
+    var pct = max ? Math.max(2, (dur||0)/max*100) : 0;
+    return '<div class="kw-wdur"><div class="bar"><i style="width:'+pct.toFixed(1)+'%;background:'+col+'"></i></div>'+
+           '<b>'+fmtDur(dur)+'</b></div>';
   }
 
-  function score(w, base){
-    var air = (w.air||0) / 300000;                 // airtime 占比（5 分钟窗）
-    var s = 0;
-    s += 0.35 * Math.min(air/0.15, 1);
-    s += 0.25 * Math.min((w.fl||0)/40, 1);
-    s += 0.15 * Math.min((w.dq||0)/30, 1);
-    s += 0.15 * Math.min((w.nd||0)/10, 1);
+  /* ================= 夜间守卫 =================
+     设计依据：家长早上打开这一页，问的是三句话 ——
+       ① 昨晚守住没有？   ② 几点几分谁还在用？   ③ 比平时多多少？
+     所以版面顺序是「结论 → 一夜时间带 → 事件证据 → 一周趋势」，
+     原来的 90 格热力图自己不会说话，把它换成每台设备一条轨道 + 事件化。 */
+
+  var NIGHT = { all:[], map:{}, base:{}, slots:[], day:0, devs:[] };
+  var nightMode = 'score';       // score = 活跃度 / by = 流量
+
+  // 窗口写死 22:30 → 次日 06:00（与采集端 win 表对齐），5 分钟一格 = 90 格
+  function nightRange(day){ return { a: day + 22*3600 + 1800, b: day + 86400 + 6*3600 }; }
+  function nightSlots(day){
+    var r = nightRange(day), out = [];
+    for (var t = r.a; t < r.b; t += 300) out.push(t);
+    return out;
+  }
+  function midnightOf(d){ d = new Date(d); d.setHours(0,0,0,0); return Math.floor(d.getTime()/1000); }
+  // 22:30 之前「今晚」还没开始，默认看已经结束的那一晚
+  function lastNightDay(){
+    var now = new Date(), m = now.getHours()*60 + now.getMinutes(), t0 = midnightOf(now);
+    return m >= 22*60+30 ? t0 : t0 - 86400;
+  }
+  // 一条 5 分钟记录属于哪一晚（凌晨那几小时算前一天晚上）
+  function nightDayOf(ts){
+    var d = new Date(ts*1000), t0 = midnightOf(d), m = d.getHours()*60 + d.getMinutes();
+    return m >= 22*60+30 ? t0 : t0 - 86400;
+  }
+
+  // 活跃度分（0–100）。四个输入全部是路由器真能采到的量，没有一个是估的：
+  //   air 射频占用（微秒 → 毫秒，300000ms = 整个 5 分钟窗）
+  //   by  这一格的字节数
+  //   fl  这一格出现的活跃站点数
+  //   nd  这一格的不同域名数
+  //   ent 娱乐类目（视频/游戏/社交/音乐/小说）的流量占比
+  //
+  // 为什么 0.40 那项写成 max(air, by) 而不是只用 air：
+  //   有线设备根本没有 station dump，airtime 恒为 0。只看 air 的话，
+  //   台式机通宵下载会被判成"静默"。两条路取大的那个，无线看占用、有线看流量。
+  var BY_FULL = 5e6;          // 5 分钟 5MB 算"明显在用"
+  function score(w){
+    if (!w) return 0;
+    var air = (w.air||0) / 300000;                     // 0~1 的射频占用率
     var by = w.by||0, ent = w.ent||0;
-    s += 0.10 * (by > 0 ? Math.min(ent/by, 1) : 0);
+    var busy = Math.max(Math.min(air/0.15, 1), Math.min(by/BY_FULL, 1));
+    var s = 0.40 * busy
+          + 0.25 * Math.min((w.fl||0)/40, 1)
+          + 0.20 * Math.min((w.nd||0)/10, 1)
+          + 0.15 * (by > 0 ? Math.min(ent/by, 1) : 0);
     return Math.round(s*100);
   }
+  var BANDS = ['静默','轻微','活跃','重度','极高'];
   function band(sc){ return sc<20?0: sc<45?1: sc<70?2: sc<85?3:4; }
-  function bandColor(b){
-    // 单色相（#D85A30）5 级递增，避免彩虹色阶
-    var base = isDark() ? '#D85A30' : '#D85A30';
-    var a = [0.10,0.28,0.48,0.70,0.95][b];
-    return hexA(base, a);
-  }
+  function bandColor(b){ return hexA('#D85A30', [0.09,0.26,0.46,0.70,0.95][b]); }
   function hexA(hex, a){
     var r = parseInt(hex.substr(1,2),16), g = parseInt(hex.substr(3,2),16), b = parseInt(hex.substr(5,2),16);
     return 'rgba('+r+','+g+','+b+','+a+')';
   }
+  // 一格算"在用"的门槛：评分够 30，或射频占用超过 2 秒
+  // 这一格算不算"在真的用"。
+  // 只看 score≥30 会漏掉"占用低但在持续下载"，所以补一个流量条件；
+  // 不用 air>=2000ms 这种绝对阈值 —— 待机保活的射频占用就能到几千毫秒。
+  function slotOn(w){
+    if (!w) return false;
+    return score(w) >= 30 || (w.by||0) >= 20e6;
+  }
+  var SHIELD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"'
+             + ' stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5.4c0 4.4-3 7.7-7 9.6'
+             + '-4-1.9-7-5.2-7-9.6V6z"/><path d="M9.2 12.1l2 2 3.6-3.8"/></svg>';
 
-  function midnightOf(d){ d = new Date(d); d.setHours(0,0,0,0); return Math.floor(d.getTime()/1000); }
-  // 22:30 之前，"今晚"还没开始，默认看昨晚（已经完整结束的那个窗口）
-  function lastNightDay(){
-    var now = new Date();
-    var m = now.getHours()*60 + now.getMinutes();
-    var t0 = midnightOf(now);
-    return m >= 22*60+30 ? t0 : t0 - 86400;
+  // 没起名字的设备：MAC 会把 112px 的标签列撑爆（截成 a8:66:7f:2f:b...），
+  // 标签列缩成"未命名 · 9f"，全名放 title。真机与演示站都是这个规矩。
+  function nname(x){
+    var s = devName(x);
+    if (/^([0-9a-f]{2}[:-]){5}/i.test(s)) return '未命名 · ' + s.slice(-2);
+    return s;
+  }
+
+  /* ---- 悬停浮层：这一格到底发生了什么 ---- */
+  var ntipEl = null;
+  function nightTipHtml(name, t, w, sc, baseAir){
+    var row = function(k, v){ return '<div class="tr"><span>'+k+'</span><b>'+v+'</b></div>'; };
+    var h = '<div class="th">'+esc(name)+' · '+hhmm(t)+'</div>';
+    if (!w) return h + row('状态','这一格没联网');
+    var col = sc>=70 ? '#D85A30' : (sc>=45 ? '#B57A0C' : (sc>0 ? '#8A8F98' : '#9ca3af'));
+    h += row('活跃度','<span style="color:'+col+'">'+sc+' 分 · '+BANDS[band(sc)]+'</span>');
+    h += row('空口占用',(w.air/1000).toFixed(1)+' 秒');
+    if (baseAir > 0) h += row('平时上限',(baseAir/1000).toFixed(1)+' 秒');
+    h += row('活跃站点',(w.fl||0)+' 个');
+    h += row('不同域名',(w.nd||0)+' 个');
+    h += row('这一格流量',fmtBy(w.by||0));
+    if (w.ent) h += row('其中娱乐',fmtBy(w.ent));
+    return h;
+  }
+  function tipShow(el, html){
+    if (!ntipEl) ntipEl = document.getElementById('night-tip');
+    if (!ntipEl) return;
+    ntipEl.innerHTML = html;
+    ntipEl.style.display = 'block';
+    var r = el.getBoundingClientRect(), box = ntipEl.getBoundingClientRect();
+    var x = r.left + r.width/2 - box.width/2;
+    var y = r.top - box.height - 9;
+    if (y < 6) y = r.bottom + 9;
+    if (x < 8) x = 8;
+    if (x + box.width > window.innerWidth - 8) x = window.innerWidth - box.width - 8;
+    ntipEl.style.left = Math.round(x) + 'px';
+    ntipEl.style.top = Math.round(y) + 'px';
+  }
+  function tipHide(){ if (ntipEl) ntipEl.style.display = 'none'; }
+
+  function renderDaySelect(){
+    var sel = $('#night-day');
+    var t0 = midnightOf(new Date());
+    var after = (new Date().getHours()*60 + new Date().getMinutes()) >= 22*60+30;
+    if (!sel.data('built')){
+      var h = '';
+      for (var i=0;i<14;i++){
+        var ts = t0 - i*86400, label;
+        if (i === 0)      label = after ? '今晚（进行中）' : '今晚（未开始）';
+        else if (i === 1) label = '昨晚';
+        else              label = mmdd(ts) + ' 夜';
+        h += '<option value="'+ts+'">'+label+'</option>';
+      }
+      sel.html(h).data('built', 1);
+    }
+    sel.val(String(S.day));
+    $('#night-prev').prop('disabled', S.day <= t0 - 13*86400);
+    $('#night-next').prop('disabled', S.day >= lastNightDay());
+  }
+
+  // 老固件可能只认 days=1/7，取不到就往下退一档，别让整页空着
+  function nightFetch(day, seq, cb){
+    seq = seq || [8, 7, 1];
+    var n = seq.shift();
+    api({fn:'night', day:day, days:n, mac:S.mac}, function(e, rows){
+      rows = rows || [];
+      if (rows.length || !seq.length) return cb(rows);
+      nightFetch(day, seq, cb);
+    });
   }
 
   function loadNight(){
     var day = S.day || lastNightDay();
     S.day = day;
     renderDaySelect();
-    api({fn:'night', day:day, days:1, mac:S.mac}, function(e, rows){
-      rows = rows || [];
-      var map = {};   // mac -> {ts: row}
-      rows.forEach(function(r){
-        (map[r.mac] = map[r.mac] || {})[r.ts] = r;
-      });
-      var rng = nightRange(day);
-      var slots = [];
-      for (var t = rng.a; t < rng.b; t += 300) slots.push(t);
-
-      var devs = S.devs.slice();
-      if (S.mac !== 'all') devs = devs.filter(function(d){ return d.mac === S.mac; });
-
-      var body = '';
-      var anyData = false;
-      devs.forEach(function(dv){
-        var rc = map[dv.mac] || {};
-        var cells = '';
-        var peak = 0;
-        slots.forEach(function(t){
-          var w = rc[t];
-          if (!w || (!w.air && !w.by && !w.fl)){
-            cells += '<i class="q" title="'+hhmm(t)+' 无记录"></i>';
-            return;
-          }
-          anyData = true;
-          var sc = score(w);
-          if (sc > peak) peak = sc;
-          cells += '<i style="background:'+bandColor(band(sc))+'" title="'+hhmm(t)+' 活跃度 '+sc+
-                   '｜空口 '+(w.air/1000).toFixed(0)+'s｜连接 '+w.fl+'｜域名 '+w.nd+'｜'+fmtBy(w.by)+'"></i>';
-        });
-        body += '<div class="kw-nightrow"><div class="nm" title="'+esc(dv.name)+'">'+esc(dv.name)+'</div>'+
-                '<div class="kw-nstrip">'+cells+'</div>'+
-                '<div class="kw-zoom">'+(peak?('峰 '+peak):'静默')+'</div></div>';
-      });
-      $('#night-body').html(body || '<div class="kw-empty">没有可显示的设备</div>');
-      $('#night-ax').html('<span>22:30</span><span>00:00</span><span>02:00</span><span>04:00</span><span>06:00</span>');
-      $('#night-legend').html(
-        [0,1,2,3,4].map(function(b){ return '<span><i style="background:'+bandColor(b)+'"></i>'+
-          ['静默','轻微','活跃','重度','极高'][b]+'</span>'; }).join('') +
-        '<span style="margin-left:auto">深色 = 真的在用，不是流量大小</span>');
-    });
-
-    // 7 晚热力图
-    api({fn:'night', day:day, days:7, mac:S.mac}, function(e, rows){
-      rows = rows || [];
-      var buckets = {};
-      rows.forEach(function(r){
-        var key = Math.floor(r.ts/1800)*1800;   // 30 分钟一格
-        buckets[key] = Math.max(buckets[key] || 0, score(r));
-      });
-      var days = [];
-      for (var i=6;i>=0;i--) days.push(day - i*86400);
-      var html = '';
-      days.forEach(function(d){
-        var cells = '';
-        for (var t = d+22*3600+1800; t < d+86400+6*3600; t += 1800){
-          var sc = buckets[t];
-          cells += sc == null
-            ? '<i title="'+mmdd(t)+' '+hhmm(t)+'"></i>'
-            : '<i style="background:'+bandColor(band(sc))+'" title="'+mmdd(t)+' '+hhmm(t)+' 活跃度 '+sc+'"></i>';
-        }
-        html += '<div style="color:var(--kw-dim)">'+mmdd(d)+' 夜</div><div class="kw-heatrow">'+cells+'</div>';
-      });
-      $('#night-heat').html(html || '<div class="kw-empty">暂无数据</div>');
+    $('#nhero-h').text('正在读取…');
+    $('#nhero-p').text('');
+    nightFetch(day, null, function(rows){
+      NIGHT.all = rows;
+      renderNight(day, rows);
     });
   }
 
-  function renderDaySelect(){
-    var sel = $('#night-day');
-    if (sel.data('built')) { sel.val(S.day); return; }
-    var t0 = midnightOf(new Date());
-    var after = (new Date().getHours()*60 + new Date().getMinutes()) >= 22*60+30;
-    var h = '';
-    for (var i=0;i<14;i++){
-      var ts = t0 - i*86400;
-      var label;
-      if (i === 0)      label = after ? '今晚（进行中）' : '今晚（未开始）';
-      else if (i === 1) label = '昨晚';
-      else              label = mmdd(ts) + ' 夜';
-      h += '<option value="'+ts+'">'+label+'</option>';
+  function renderNight(day, all){
+    var rng = nightRange(day);
+    var cur = [], prev = [];
+    (all||[]).forEach(function(r){
+      if (r.ts >= rng.a && r.ts < rng.b) cur.push(r);
+      else if (r.ts >= rng.a - 7*86400 && r.ts < rng.a) prev.push(r);
+    });
+
+    var map = {}, macs = {};
+    cur.forEach(function(r){ (map[r.mac] = map[r.mac] || {})[r.ts] = r; macs[r.mac] = 1; });
+
+    // 基线：每台设备前 7 晚同一窗口里射频占用的 P90 —— "平时夜里的天花板"。
+    // 跟自己比，所以不会因为一台设备天生话多就被天天报警。
+    var bset = {}, base = {};
+    prev.forEach(function(r){ (bset[r.mac] = bset[r.mac] || []).push(r.air || 0); });
+    Object.keys(bset).forEach(function(m){
+      var a = bset[m].slice().sort(function(x,y){ return x-y; });
+      base[m] = a.length ? a[Math.min(a.length-1, Math.floor(a.length*0.9))] : 0;
+    });
+
+    var devs = nightDevList(map, macs);
+    var slots = nightSlots(day);
+
+    var evs = [];
+    devs.forEach(function(d){
+      buildEvents(d, map[d.mac] || {}, slots, base[d.mac] || 0).forEach(function(e){ evs.push(e); });
+    });
+    evs.sort(function(a,b){ return b.mins - a.mins || a.t0 - b.t0; });
+
+    NIGHT.map = map; NIGHT.base = base; NIGHT.slots = slots; NIGHT.day = day;
+    NIGHT.devs = devs;
+
+    renderHero(day, devs, map, slots, evs, prev);
+    renderRail(day, devs, map, slots, base);
+    renderEvents(day, evs, base);
+    renderWeek(day, devs, all, base);
+  }
+
+  // 设备表里的设备 + 数据里出现但表里没有的（不然会漏掉正在用的那台），按"当晚有多闹"排序
+  function nightDevList(map, macs){
+    var devs = (S.devs || []).slice();
+    if (S.mac !== 'all') devs = devs.filter(function(d){ return d.mac === S.mac; });
+    var known = {};
+    devs.forEach(function(d){ known[String(d.mac).toLowerCase()] = 1; });
+    Object.keys(macs).forEach(function(m){
+      if (!known[String(m).toLowerCase()]){ devs.push({mac:m, name:m}); known[String(m).toLowerCase()] = 1; }
+    });
+    var rows = devs.map(function(d){
+      var rc = map[d.mac] || {}, tot = 0, pk = 0;
+      Object.keys(rc).forEach(function(k){
+        if (slotOn(rc[k])) tot += 5;
+        pk = Math.max(pk, score(rc[k]));
+      });
+      return { d:d, tot:tot, pk:pk };
+    });
+    // 整夜只有保活（待机推送）的设备不占版面 —— 轨道上一排"—"没有信息量，
+    // 数量放到时间带脚注里说明，需要看的话用顶部设备下拉单独选。
+    var idle = rows.filter(function(x){ return x.tot <= 0; }).length;
+    rows = rows.filter(function(x){ return x.tot > 0; });
+    rows.sort(function(a,b){ return b.tot - a.tot || b.pk - a.pk; });
+    NIGHT.idle = idle;
+    return rows.map(function(x){ return x.d; });
+  }
+
+  // 把连续活跃的格子聚成"事件"：家长理解的是"一段"，不是 90 个格子。
+  // 允许中间断 2 格（10 分钟）—— 切后台、重连、看本地缓存都会断。
+  function buildEvents(d, rc, slots, baseAir){
+    var on = slots.map(function(t){ return slotOn(rc[t]); });
+    var out = [], i = 0;
+    while (i < on.length){
+      if (!on[i]){ i++; continue; }
+      var j = i, gap = 0;
+      while (j + 1 < on.length){
+        if (on[j+1]){ j++; gap = 0; continue; }
+        if (gap < 2){ j++; gap++; continue; }
+        break;
+      }
+      var mins = 0, cnt = 0, pk = 0, by = 0, fl = 0, nd = 0, air = 0, ent = 0, dq = 0;
+      for (var k = i; k <= j; k++){
+        var w = rc[slots[k]];
+        if (!w) continue;
+        cnt++;
+        if (slotOn(w)) mins += 5;
+        pk = Math.max(pk, score(w));
+        by += w.by||0; fl += w.fl||0; air += w.air||0;
+        ent += w.ent||0; dq += w.dq||0; nd = Math.max(nd, w.nd||0);
+      }
+      if (cnt){
+        var avg = air / cnt;
+        out.push({
+          mac:d.mac, name:nname(d), t0:slots[i], t1:slots[j] + 300,
+          mins:mins, peak:pk, by:by, fl:fl, nd:nd, air:air, ent:ent, dq:dq,
+          avgAir:avg, baseAir:baseAir,
+          ratio: baseAir > 0 ? avg / baseAir : 0,
+          hot: mins >= 15 && (baseAir > 0 ? avg > baseAir * 1.5 : avg > 4000)
+        });
+      }
+      i = j + 1;
     }
-    sel.html(h).data('built',1).val(S.day);
+    return out;
   }
 
-  /* ---------------- 设备 ---------------- */
-  function loadDevTab(){
-    api({fn:'devs'}, function(e, d){
-      var rows = d || [];
-      var h = '<thead><tr><th>设备</th><th>角色</th><th>统计</th><th class="r">今日时长</th><th class="r">今日流量</th><th class="r">最后活动</th></tr></thead><tbody>';
-      if (!rows.length){ h += '<tr><td colspan="6" class="kw-empty">还没有任何设备记录</td></tr>'; }
-      rows.forEach(function(x){
-        var last = x.last ? hhmm(x.last) : '—';
-        h += '<tr data-mac="'+esc(x.mac)+'">'+
-          '<td><input class="kw-devin" data-k="alias" value="'+esc(x.alias||'')+'" placeholder="'+esc(x.host||x.mac)+'">'+
-              '<div class="dom" style="margin-left:5px">'+esc(x.mac)+'</div></td>'+
-          '<td><select class="kw-devin" data-k="role">'+
-              ['child','adult','guest','iot'].map(function(r){
-                return '<option value="'+r+'"'+(x.role===r?' selected':'')+'>'+
-                  ({child:'孩子',adult:'大人',guest:'访客',iot:'智能设备'})[r]+'</option>';
-              }).join('')+'</select></td>'+
-          '<td><select class="kw-devin" data-k="mode">'+
-              ['full','summary','ignore'].map(function(r){
-                return '<option value="'+r+'"'+(x.mode===r?' selected':'')+'>'+
-                  ({full:'完整',summary:'仅总量',ignore:'忽略'})[r]+'</option>';
-              }).join('')+'</select></td>'+
-          '<td class="r num">'+fmtDur(x.dur)+'</td>'+
-          '<td class="r num">'+fmtBy(x.by)+'</td>'+
-          '<td class="r num">'+last+'</td></tr>';
+  function renderHero(day, devs, map, slots, evs, prev){
+    var mins = 0, last = 0, devSet = {};
+    devs.forEach(function(d){
+      var rc = map[d.mac] || {};
+      slots.forEach(function(t){
+        var w = rc[t];
+        if (!w) return;
+        if (slotOn(w)){ mins += 5; devSet[d.mac] = 1; }
+        if (score(w) >= 20 && t > last) last = t;
       });
-      $('#dev-tbl').html(h + '</tbody>');
-      $('#dev-tbl :input').on('change', function(){
-        var tr = $(this).closest('tr'), mac = tr.data('mac');
-        var k = $(this).data('k'), v = $(this).val();
-        api({fn:'setdev', mac:mac, key:k, val:v}, function(){
-          loadDevs();
-          if (k === 'mode') loadDevTab();
+    });
+    var big = evs.filter(function(e){ return e.mins >= 10; });
+    var hot = evs.filter(function(e){ return e.hot; });
+
+    // 前 7 晚同口径（每台设备 × 每 5 分钟算一格）
+    var ps = {}, pn = 0;
+    prev.forEach(function(r){
+      if (slotOn(r)){ var k = r.mac+'|'+r.ts; if (!ps[k]){ ps[k] = 1; pn++; } }
+    });
+    var prevMins = pn * 5 / 7;
+
+    // ---- 一句话结论 ----
+    var lv, h, p, nDev = Object.keys(devSet).length;
+    if (!mins){
+      lv = 0; h = '这一晚完全安静';
+      p = '整夜没有任何一台设备产生联网记录 —— 这是最理想的结果。';
+    } else if (mins < 20){
+      lv = 1; h = '这一晚守住了';
+      p = nDev + ' 台设备有过零星联网，全夜累计 <b>' + mins + ' 分钟</b>'
+        + (last ? '，最后一格在 <b>' + hhmm(last) + '</b>' : '') + '，没有出现连续使用。';
+    } else if (mins < 60){
+      lv = 2; h = '这一晚有活动';
+      var t1 = big[0] || evs[0];
+      p = '<b>' + esc(t1.name) + '</b> 在 ' + hhmm(t1.t0) + '–' + hhmm(t1.t1)
+        + ' 连续用了 <b>' + t1.mins + ' 分钟</b>'
+        + (last ? '，全夜最后一格联网在 <b>' + hhmm(last) + '</b>' : '') + '。';
+    } else {
+      lv = 3; h = '这一晚明显熬夜';
+      var t2 = big[0] || evs[0];
+      p = '<b>' + esc(t2.name) + '</b> 从 ' + hhmm(t2.t0) + ' 到 ' + hhmm(t2.t1)
+        + ' 连续用了 <b>' + t2.mins + ' 分钟</b>'
+        + (t2.hot && t2.ratio ? '，是这台自己平时夜间上限的 <b>' + t2.ratio.toFixed(1) + ' 倍</b>' : '')
+        + '；全夜最后一格联网在 <b>' + hhmm(last) + '</b>。';
+    }
+    if (big.length > 1) p += ' 另外还有 <b>' + (big.length - 1) + '</b> 段连续活动。';
+
+    var hero = document.getElementById('night-hero');
+    if (hero){ hero.className = 'kw-nhero lv' + lv; }
+    var sh = document.getElementById('nhero-sh');
+    if (sh) sh.innerHTML = SHIELD;
+    $('#nhero-h').text(h);
+    $('#nhero-p').html(p);
+
+    // ---- 四个数 ----
+    $('#nhero-mins').text(mins ? (mins >= 60 ? (mins/60).toFixed(1) + ' 小时' : mins + ' 分钟') : '0 分钟');
+    $('#nhero-last').text(last ? hhmm(last) : '—');
+    $('#nhero-ev').text(hot.length + ' 条');
+    $('#nhero-ev-i').text(hot.length ? '超过平时上限 1.5 倍' : (big.length ? '都在平时范围内' : '没有连续活动'));
+
+    var $c = $('#nhero-cmp').removeClass('good bad');
+    if (prevMins >= 3){
+      var d = (mins - prevMins) / prevMins;
+      var pct = Math.abs(Math.round(d*100));
+      $c.text((d >= 0 ? '↑ ' : '↓ ') + pct + '%');
+      if (d > 0.25) $c.addClass('bad'); else if (d < -0.25) $c.addClass('good');
+      $('#nhero-cmp-i').text('前 7 晚均值 ' + Math.round(prevMins) + ' 分');
+    } else if (mins > 0){
+      $c.text('↑ 新增').addClass('bad');
+      $('#nhero-cmp-i').text('前 7 晚夜间没有活动');
+    } else {
+      $c.text('—');
+      $('#nhero-cmp-i').text('前 7 晚也没有活动');
+    }
+  }
+
+  function renderRail(day, devs, map, slots, base){
+    var el = document.getElementById('night-rail');
+    if (!el) return;
+    var n = slots.length;
+    var byMax = 1;
+    Object.keys(map).forEach(function(m){
+      Object.keys(map[m]).forEach(function(k){ byMax = Math.max(byMax, map[m][k].by || 0); });
+    });
+
+    // 刻度：22:30 起算，450 分钟
+    var ticks = [0, 90, 210, 330, 450];
+    var th = '<div class="kw-rtick">';
+    ticks.forEach(function(mn){
+      var lbl = hhmm(day + 22*3600 + 1800 + mn*60);
+      var cls = mn === 0 ? 'e' : (mn === 450 ? 'e end' : (mn === 90 ? 'z' : ''));
+      th += '<span class="' + cls + '" style="left:' + (mn/450*100).toFixed(2) + '%">' + lbl + '</span>';
+    });
+    th += '</div>';
+
+    if (!devs.length){
+      el.innerHTML = '<div class="kw-empty">这一晚没有任何设备留下记录</div>';
+      $('#night-railfoot').html('');
+      return;
+    }
+
+    var body = '';
+    devs.forEach(function(d){
+      var rc = map[d.mac] || {};
+      var bars = [], cur = null, cells = '', mins = 0, lastT = 0;
+      slots.forEach(function(t, i){
+        var w = rc[t];
+        var on = slotOn(w);
+        if (on){
+          mins += 5;
+          if (t > lastT) lastT = t;
+          var v = nightMode === 'by' ? Math.min(1, (w.by||0)/byMax) : Math.min(1, score(w)/100);
+          if (cur && cur.end === i - 1){ cur.end = i; cur.v = Math.max(cur.v, v); }
+          else { cur = { start:i, end:i, v:v }; bars.push(cur); }
+        }
+        cells += '<b data-i="' + i + '" data-mac="' + esc(d.mac) + '"></b>';
+      });
+      var segs = '';
+      bars.forEach(function(b){
+        segs += '<i style="left:' + (b.start/n*100).toFixed(3) + '%;width:'
+              + ((b.end - b.start + 1)/n*100).toFixed(3) + '%;background:'
+              + hexA('#D85A30', 0.16 + b.v*0.78) + '"></i>';
+      });
+      body += '<div class="kw-rrow">'
+            +   '<div class="kw-rname" title="' + esc(devName(d)) + '">' + esc(nname(d)) + '</div>'
+            +   '<div class="kw-rtrack"><div class="kw-rsegs">' + segs + '</div>'
+            +     '<div class="kw-rzero"></div>'
+            +     '<div class="kw-rcells">' + cells + '</div></div>'
+            +   '<div class="kw-rmeta' + (mins >= 20 ? ' hot' : '') + '">'
+            +     (mins ? mins + ' 分' : '—') + '</div>'
+            + '</div>';
+    });
+    el.innerHTML = th + body;
+
+    var ft = '';
+    [0,1,2,3,4].forEach(function(b){
+      ft += '<span class="lg"><i style="background:' + bandColor(b) + '"></i>' + BANDS[b] + '</span>';
+    });
+    ft += '<span class="zero"><s></s>0 点</span>';
+    if (NIGHT.idle) ft += '<span>另有 ' + NIGHT.idle + ' 台整夜只有待机保活，未列出</span>';
+    ft += '<span style="margin-left:auto">'
+        + (nightMode === 'by' ? '颜色 = 这一格流量相对大小' : '颜色 = 真的在用，不是流量大小')
+        + '</span>';
+    $('#night-railfoot').html(ft);
+
+    if (!el.__bound){
+      el.__bound = 1;
+      el.addEventListener('mouseover', function(e){
+        var c = e.target.closest ? e.target.closest('b[data-i]') : null;
+        if (!c) return;
+        var i = +c.getAttribute('data-i'), mac = c.getAttribute('data-mac');
+        var rc = NIGHT.map[mac] || {};
+        var t = NIGHT.slots[i];
+        var w = rc[t];
+        var dv = null;
+        (NIGHT.devs || []).forEach(function(x){ if (x.mac === mac) dv = x; });
+        tipShow(c, nightTipHtml(dv ? nname(dv) : mac, t, w, w ? score(w) : 0, NIGHT.base[mac] || 0));
+      });
+      el.addEventListener('mouseout', function(e){
+        var c = e.target.closest ? e.target.closest('b[data-i]') : null;
+        if (c) tipHide();
+      });
+    }
+  }
+
+  function renderEvents(day, evs, base){
+    var el = document.getElementById('night-events');
+    if (!el) return;
+    var big = evs.filter(function(e){ return e.mins >= 10; });
+    var small = evs.filter(function(e){ return e.mins < 10; });
+
+    $('#night-ev-sub').text(big.length ? big.length + ' 件 · 连续活跃 ≥ 10 分钟'
+                                      : '连续活跃 ≥ 10 分钟才算一件');
+
+    if (!big.length){
+      var tip = small.length
+        ? '另有 ' + small.length + ' 段 5–10 分钟的零星联网，不构成事件。'
+        : '整夜连一次 5 分钟以上的连续联网都没有。';
+      el.innerHTML = '<div class="kw-nnone"><b>这一晚没有夜间事件</b>' + tip + '</div>';
+      return;
+    }
+
+    var h = '';
+    big.slice(0, 8).forEach(function(e){
+      var desc, explain;
+      if (e.hot){
+        desc = '超平时上限 ×' + (e.ratio ? e.ratio.toFixed(1) : '—');
+        explain = '这段平均射频占用 ' + (e.avgAir/1000).toFixed(1) + ' 秒/格，'
+                + (e.baseAir > 0
+                    ? '这台设备前 7 晚的夜间上限是 ' + (e.baseAir/1000).toFixed(1) + ' 秒/格，超过了 1.5 倍。'
+                    : '前 7 晚没有基线（可能刚接入），按绝对活跃度判定。');
+      } else if (e.baseAir > 0){
+        desc = '在平时范围内';
+        explain = '这段平均射频占用 ' + (e.avgAir/1000).toFixed(1) + ' 秒/格，'
+                + '没有超过这台设备前 7 晚的夜间上限（' + (e.baseAir/1000).toFixed(1) + ' 秒/格）。';
+      } else {
+        desc = '无基线可比';
+        explain = '这台设备前 7 晚没有夜间记录，只能按绝对活跃度判断。';
+      }
+      h += '<details class="kw-nev' + (e.hot ? '' : ' mild') + '">'
+         +   '<summary>'
+         +     '<span class="kw-nevt">' + hhmm(e.t0) + '–' + hhmm(e.t1) + '</span>'
+         +     '<span class="kw-nevw">' + esc(e.name)
+         +       '<em>' + e.mins + ' 分钟 · 峰值 ' + e.peak + ' 分</em></span>'
+         +     '<span class="kw-nevd">' + fmtBy(e.by) + '</span>'
+         +   '</summary>'
+         +   '<div class="kw-nevb">'
+         +     '<span class="' + (e.hot ? 'acc' : 'ok') + '">' + desc + '</span>'
+         +     '<span>空口 ' + (e.air/1000).toFixed(0) + ' 秒</span>'
+         +     '<span>活跃站点 ' + e.fl + '</span>'
+         +     '<span>不同域名 ' + e.nd + '</span>'
+         +     '<span>娱乐 ' + (e.by ? Math.round(e.ent/e.by*100) : 0) + '%</span>'
+         +     '<p>' + explain + '</p>'
+         +   '</div>'
+         + '</details>';
+    });
+    if (big.length > 8) h += '<p class="kw-note">只列最长的 8 段，其余 ' + (big.length - 8) + ' 段略。</p>';
+    el.innerHTML = h;
+  }
+
+  function renderWeek(day, devs, all, base){
+    var el = document.getElementById('night-week');
+    if (!el) return;
+    var days = [];
+    for (var i=6;i>=0;i--) days.push(day - i*86400);
+
+    var agg = {}, maxM = 1;
+    (all||[]).forEach(function(r){
+      var nd = nightDayOf(r.ts);
+      if (nd < days[0] || nd > days[6]) return;
+      if (!slotOn(r)) return;
+      var k = r.mac + '|' + nd;
+      agg[k] = (agg[k]||0) + 5;
+      if (agg[k] > maxM) maxM = agg[k];
+    });
+
+    if (!devs.length){
+      el.innerHTML = '<div class="kw-empty" style="padding:20px 0">最近 7 晚没有记录</div>';
+      $('#night-week-note').text('');
+      return;
+    }
+
+    var h = '<div class="kw-wkrow hd"><div class="nm">设备</div>'
+          + days.map(function(d){ return '<div class="dy">' + mmdd(d) + '</div>'; }).join('')
+          + '</div>';
+    devs.slice(0, 6).forEach(function(d){
+      h += '<div class="kw-wkrow"><div class="nm" title="' + esc(devName(d)) + '">'
+         + esc(nname(d)) + '</div>';
+      days.forEach(function(dd){
+        var m = agg[d.mac + '|' + dd] || 0;
+        var a = m ? (0.13 + 0.72 * Math.min(1, m / Math.max(40, maxM))) : 0;
+        var st = m ? 'background:' + hexA('#D85A30', a) + ';' + (a > 0.42 ? 'color:#fff;' : '') : '';
+        h += '<div class="kw-wkc' + (dd === day ? ' on' : '') + (m ? '' : ' empty') + '"'
+           +   ' data-day="' + dd + '" style="' + st + '"'
+           +   ' title="' + mmdd(dd) + ' · ' + (m ? m + ' 分钟' : '无活动') + '">'
+           +   (m || '·') + '</div>';
+      });
+      h += '</div>';
+    });
+    el.innerHTML = h;
+
+    var sum = 0, cnt = 0;
+    days.forEach(function(dd, i){
+      if (i === 6) return;   // 不含当前这一晚
+      var s = 0;
+      devs.forEach(function(d){ s += agg[d.mac + '|' + dd] || 0; });
+      sum += s; cnt++;
+    });
+    var avg = cnt ? sum/cnt : 0;
+    var cur = 0;
+    devs.forEach(function(d){ cur += agg[d.mac + '|' + day] || 0; });
+    $('#night-week-note').html(
+      '前 6 晚平均 <b>' + Math.round(avg) + ' 分钟</b>，这一晚 <b>' + cur + ' 分钟</b>。'
+      + ' 颜色越深表示那晚夜间在网时间越长。');
+
+    if (!el.__bound){
+      el.__bound = 1;
+      el.addEventListener('click', function(e){
+        var c = e.target.closest ? e.target.closest('.kw-wkc') : null;
+        if (!c) return;
+        var dd = +c.getAttribute('data-day');
+        if (!dd || dd === S.day) return;
+        S.day = dd;
+        loadNight();
+      });
+    }
+  }
+
+  /* ---------------- 上网详单：左边挑设备，右边看明细 ---------------- */
+  function devName(x){ return x.alias || x.name || x.host || x.mac; }
+  // 流量只在概览加载过一次；直接进这一页时没有，得自己取
+  function ensureFlow(cb){
+    if (S.flow) return cb();
+    api({fn:'flow'}, function(e, f){
+      if (f && f.per) S.flow = f;
+      cb();
+    });
+  }
+
+  // 这排设备与「终端列表」同源（fn=devs → 固件 get_all_users），不另建一份。
+  // 点一台 = 把 S.mac 收窄，右边明细和顶部下拉跟着走。
+  function loadSideDevs(){
+    ensureFlow(function(){
+      api({fn:'devs'}, function(e, d){
+        var rows = d || [];
+        S.devRows = rows;
+        var live = rows.filter(function(x){ return x.mode !== 'ignore'; });
+        var max = Math.max.apply(null, rows.map(function(x){ return x.dur||0; }).concat([1]));
+        var h = '<div class="kw-wdev'+(S.mac === 'all' ? ' on' : '')+'" data-mac="all">'
+              +   '<div class="av">全</div><div class="nm">全部设备</div>'
+              +   '<div class="vv">'+live.length+' 台在统计</div>'
+              +   '<div class="bar"><i style="width:100%"></i></div>'
+              + '</div>';
+        rows.forEach(function(x){
+          var d0 = x.dur || 0;
+          h += '<div class="kw-wdev'+(S.mac === x.mac ? ' on' : '')+'" data-mac="'+esc(x.mac)+'" title="'+esc(x.mac)+'">'
+             +   '<div class="av">'+esc(String(devName(x)).charAt(0).toUpperCase())+'</div>'
+             +   '<div class="nm">'+esc(devName(x))+'</div>'
+             +   '<div class="vv">'+fmtDur(d0)+(x.mode === 'ignore' ? ' · 不记录' : '')+'</div>'
+             +   '<div class="bar"><i style="width:'+(max ? Math.max(2, d0/max*100) : 0).toFixed(1)+'%"></i></div>'
+             + '</div>';
+        });
+        $('#web-devs').html(h);
+        var busy = live.filter(function(x){ return (x.dur||0) > 0; }).length;
+        $('#ws-dev').text(busy);
+        $('#ws-dev-i').text(live.length + ' 台在统计' + (busy < live.length ? ' · ' + (live.length-busy) + ' 台今天没动静' : ''));
+        renderDevTable(rows);
+      });
+    });
+  }
+
+  function renderDevTable(rows){
+    var h = '<thead><tr><th>设备</th><th>角色</th><th>统计</th>'+
+            '<th class="r">今日时长</th><th class="r">今日流量</th><th class="r">最后活动</th></tr></thead><tbody>';
+    if (!rows.length){ h += '<tr><td colspan="6" class="kw-empty">还没有任何设备记录</td></tr>'; }
+    rows.forEach(function(x){
+      var last = x.last ? hhmm(x.last) : '—';
+      h += '<tr data-mac="'+esc(x.mac)+'">'+
+        '<td><input class="kw-devin" data-k="alias" value="'+esc(x.alias||'')+'" placeholder="'+esc(x.host||x.mac)+'">'+
+            '<div class="dom" style="margin-left:5px">'+esc(x.mac)+'</div></td>'+
+        '<td><select class="kw-devin" data-k="role">'+
+            ['child','adult','guest','iot'].map(function(r){
+              return '<option value="'+r+'"'+(x.role===r?' selected':'')+'>'+
+                ({child:'孩子',adult:'大人',guest:'访客',iot:'智能设备'})[r]+'</option>';
+            }).join('')+'</select></td>'+
+        '<td><select class="kw-devin" data-k="mode">'+
+            ['full','summary','ignore'].map(function(r){
+              return '<option value="'+r+'"'+(x.mode===r?' selected':'')+'>'+
+                ({full:'完整',summary:'仅总量',ignore:'忽略'})[r]+'</option>';
+            }).join('')+'</select></td>'+
+        '<td class="r num">'+fmtDur(x.dur)+'</td>'+
+        '<td class="r num">'+fmtBy(devBy(x.mac))+'</td>'+
+        '<td class="r num">'+last+'</td></tr>';
+    });
+    $('#dev-tbl').html(h + '</tbody>');
+    $('#dev-tbl :input').on('change', function(){
+      var tr = $(this).closest('tr'), mac = tr.data('mac');
+      var k = $(this).data('k'), v = $(this).val();
+      api({fn:'setdev', mac:mac, key:k, val:v}, function(){
+        loadDevs();
+        if (S.tab === 'web') loadSideDevs();
+        else api({fn:'devs'}, function(e2, d2){
+          S.devRows = d2 || [];
+          renderDevTable(S.devRows);
         });
       });
     });
+  }
+
+  // 设备与统计方式：弹层。入口在概览的设备卡和上网详单左列，
+  // 不再挂在某一页正文底部 —— 它是一条跨页的设置，不属于任何一页的内容。
+  function openDevSet(){
+    $('#devset').addClass('on');
+    api({fn:'devs'}, function(e, d){
+      S.devRows = d || [];
+      renderDevTable(S.devRows);
+    });
+  }
+  function closeDevSet(){ $('#devset').removeClass('on'); }
+  $(document).on('click', '[data-open="devset"]', function(e){ e.preventDefault(); openDevSet(); });
+  $(document).on('click', '#devset [data-close]', function(){ closeDevSet(); });
+  $(document).on('keydown', function(e){
+    if (e.key === 'Escape' || e.keyCode === 27) closeDevSet();
+  });
+
+  // 选中某台设备：顶部下拉、设备带高亮、右边明细保持一致
+  function pickDev(mac){
+    S.mac = mac; S.page = 0;
+    try { localStorage.setItem('kw.mac', mac); } catch(e){}
+    $('#kw-dev').val(mac);
+    $('#web-devs .kw-wdev').removeClass('on');
+    $('#web-devs .kw-wdev[data-mac="'+mac+'"]').addClass('on');
+    if (S.tab === 'web') loadWeb();
+    else if (S.tab === 'night') loadNight();
+    else refresh();
   }
 
   /* ---------------- 系统 ---------------- */
-  var cpuChart = null, tempChart = null, sysWin = '1h';
+  var detailChart = null, sysWin = '1h';
+  function sysSpark(id, vals, color){
+    var el = document.getElementById(id);
+    if (!el) return;
+    var c = echarts.getInstanceByDom(el);
+    if (!c) c = echarts.init(el, null, {renderer:'svg'});
+    if (!vals.length || vals.every(function(v){ return v == null; })){
+      c.clear();
+      el.innerHTML = '<div class="kw-empty" style="padding:18px 0;font-size:12px">暂无采样</div>';
+      return;
+    }
+    c.setOption({
+      animation:false, backgroundColor:'transparent',
+      grid:{left:0, right:0, top:8, bottom:2},
+      xAxis:{type:'category', show:false, boundaryGap:false,
+             data:vals.map(function(_,i){ return i; })},
+      yAxis:{type:'value', show:false, scale:true},
+      series:[{type:'line', data:vals, showSymbol:false, smooth:false,
+               lineStyle:{width:1.4, color:color},
+               areaStyle:{color:hexA(color, 0.16)}, itemStyle:{color:color}}]
+    }, true);
+    c.resize();
+  }
   function loadSys(){
     api({fn:'sys', win:sysWin}, function(e, rows){
       rows = rows || [];
-      drawCpu(rows); drawTemp(rows);
+      var f = function(k){ return rows.map(function(r){ return r[k]==null?null:+r[k]; }); };
       if (rows.length){
         var r = rows[rows.length-1];
         $('#s-cpu').text((r.cpu||0).toFixed(1) + '%');
@@ -815,6 +1992,10 @@
         $('#s-tc').text((r.tc||0) + ' °C');
         $('#s-mem').text((r.mem||0) + ' MB');
       }
+      sysSpark('sys-cpu',  f('cpu'), '#378ADD');
+      sysSpark('sys-temp', f('tc'),  '#BA7517');
+      sysSpark('sys-mem',  f('mem'), '#1D9E75');
+      drawSysDetail(rows);
     });
   }
   function axisCommon(rows){
@@ -824,46 +2005,42 @@
       splitLine:{lineStyle:{color:line()}}
     };
   }
-  function drawCpu(rows){
-    var el = document.getElementById('sys-cpu');
-    if (!cpuChart) cpuChart = echarts.init(el, null, {renderer:'svg'});
-    if (!rows.length){ el.innerHTML = '<div class="kw-empty">还没有采样数据（每分钟一个点）</div>'; return; }
-    var xs = rows.map(function(r){ return hhmm(r.ts); });
-    var ys = rows.map(function(r){ return +(r.cpu||0).toFixed(1); });
-    cpuChart.setOption({
-      backgroundColor:'transparent',
-      grid:{left:2,right:8,top:14,bottom:2,containLabel:true},
-      tooltip:{trigger:'axis', backgroundColor:isDark()?'#1f2430':'#fff', borderColor:line(),
-               textStyle:{color:ink(),fontSize:12}, valueFormatter:function(v){ return v+' %'; }},
-      xAxis:$.extend({type:'category', data:xs, boundaryGap:false}, axisCommon(rows)),
-      yAxis:$.extend({type:'value', min:0, max:function(v){ return Math.max(20, Math.ceil(v.max*1.25/10)*10); },
-                      axisLabel:{color:dim(),fontSize:10,formatter:'{value}%'}}, axisCommon(rows)),
-      series:[{type:'line', data:ys, smooth:false, showSymbol:false, lineStyle:{width:1.6, color:'#378ADD'},
-               areaStyle:{color:hexA('#378ADD', 0.13)}, itemStyle:{color:'#378ADD'}}]
-    }, true);
-    cpuChart.resize();
-  }
-  function drawTemp(rows){
-    var el = document.getElementById('sys-temp');
-    if (!tempChart) tempChart = echarts.init(el, null, {renderer:'svg'});
-    if (!rows.length){ el.innerHTML = '<div class="kw-empty">还没有采样数据</div>'; return; }
+  function drawSysDetail(rows){
+    var el = document.getElementById('sys-detail');
+    if (!el) return;
+    if (!rows.length){
+      if (detailChart){ detailChart.dispose(); detailChart = null; }
+      el.innerHTML = '<div class="kw-empty">还没有采样数据（每分钟一个点）</div>';
+      return;
+    }
+    if (!detailChart) detailChart = echarts.init(el, null, {renderer:'svg'});
     var xs = rows.map(function(r){ return hhmm(r.ts); });
     var f = function(k){ return rows.map(function(r){ return r[k] ? +r[k] : null; }); };
-    tempChart.setOption({
-      backgroundColor:'transparent',
-      grid:{left:2,right:8,top:16,bottom:2,containLabel:true},
+    var step = Math.max(0, Math.ceil(xs.length/8)-1);
+    detailChart.setOption({
+      animation:false, backgroundColor:'transparent',
+      grid:{left:2, right:10, top:34, bottom:2, containLabel:true},
       tooltip:{trigger:'axis', backgroundColor:isDark()?'#1f2430':'#fff', borderColor:line(),
-               textStyle:{color:ink(),fontSize:12}, valueFormatter:function(v){ return v+' °C'; }},
-      legend:{show:false},
-      xAxis:$.extend({type:'category', data:xs, boundaryGap:false}, axisCommon(rows)),
-      yAxis:$.extend({type:'value', min:45, max:92, axisLabel:{color:dim(),fontSize:10,formatter:'{value}°'}}, axisCommon(rows)),
+               textStyle:{color:ink(), fontSize:12}},
+      legend:{show:true, right:44, top:2, itemWidth:10, itemHeight:8,
+              textStyle:{color:dim(), fontSize:11}},
+      xAxis:$.extend({}, axisCommon(rows), {type:'category', data:xs, boundaryGap:false,
+              axisLabel:{color:dim(), fontSize:10, interval:step}}),
+      yAxis:[
+        $.extend({type:'value', min:0, position:'left',
+                  axisLabel:{color:dim(), fontSize:10, formatter:'{value}%'}}, axisCommon(rows)),
+        $.extend({type:'value', min:45, max:95, position:'right', splitLine:{show:false},
+                  axisLabel:{color:dim(), fontSize:10, formatter:'{value}°'}}, axisCommon(rows))
+      ],
       series:[
-        {name:'CPU', type:'line', data:f('tc'), showSymbol:false, lineStyle:{width:1.8,color:'#BA7517'}, itemStyle:{color:'#BA7517'}},
-        {name:'2.4G', type:'line', data:f('w24'), showSymbol:false, lineStyle:{width:1.3,color:'#888780',type:'dashed'}, itemStyle:{color:'#888780'}},
-        {name:'5G', type:'line', data:f('w5'), showSymbol:false, lineStyle:{width:1.3,color:'#5F5E5A'}, itemStyle:{color:'#5F5E5A'}}
+        {name:'CPU', type:'line', data:f('cpu'), showSymbol:false, yAxisIndex:0,
+         lineStyle:{width:1.7, color:'#378ADD'}, areaStyle:{color:hexA('#378ADD',.13)},
+         itemStyle:{color:'#378ADD'}},
+        {name:'CPU 温度', type:'line', data:f('tc'), showSymbol:false, yAxisIndex:1,
+         lineStyle:{width:1.5, color:'#BA7517'}, itemStyle:{color:'#BA7517'}}
       ]
     }, true);
-    tempChart.resize();
+    detailChart.resize();
   }
 
   /* ---------------- 交互 ---------------- */
@@ -872,34 +2049,25 @@
     var rl = {today:'今天',yesterday:'昨天','7d':'近 7 天','30d':'近 30 天'}[r] || r;
     $('#kw-hint').text(
       S.tab === 'sys'   ? '整机指标 · 每 60 秒采集一次' :
-      S.tab === 'night' ? '每晚 22:30 → 次日 06:00 · 5 分钟一格' :
+      S.tab === 'night' ? '判定的是「真的在用」，不是流量大小 · 每晚 22:30 → 06:00' :
                           rl + ' · ' + macLabel + ' · 数据每 10 秒采集一次');
     if (S.tab === 'ov') loadOverview();
-    if (S.tab === 'web') loadWeb();
-    if (S.tab === 'night') loadNight();
-    if (S.tab === 'dev') loadDevTab();
+    if (S.tab === 'web'){ loadSideDevs(); loadWeb(); }
+    if (S.tab === 'night') { loadSideDevs(); loadNight(); }
     if (S.tab === 'sys') loadSys();
   }
 
-  function applyTab(t, push){
+  function applyTab(t){
     S.tab = t;
-    $('#kw-tabs button').removeClass('on').filter('[data-t="'+t+'"]').addClass('on');
     $('#kw [data-pane]').hide(); $('#kw [data-pane="'+t+'"]').show();
-    $('#kw-title').text(TABTITLE[t] || '家长看板');
+    $('#kw-title').text(TABTITLE[t] || '守护视图');
     // 系统页和夜间页各自带时间选择器，顶栏那组对它们没意义，收起来免得困惑
     var own = (t === 'sys' || t === 'night');
     $('#kw-rng').toggle(!own);
-    $('#kw-dev').toggle(!own);
-    // 让地址栏跟着走：刷新/收藏/分享都落在同一个功能上
-    if (push && window.history && history.replaceState) {
-      try { history.replaceState(null, '', tabUrl(t)); } catch(e){}
-    }
+    // 上网详单左边已经有一列设备，顶栏这个下拉就多余了
+    $('#kw-dev').toggle(t === 'ov' || t === 'night');
   }
 
-  $('#kw-tabs').on('click', 'button', function(){
-    applyTab($(this).data('t'), true);
-    refresh();
-  });
   $('#kw-rng').on('click', 'button', function(){
     S.range = $(this).data('r');
     $('#kw-rng button').removeClass('on'); $(this).addClass('on');
@@ -913,7 +2081,22 @@
     $('#web-met button').removeClass('on'); $(this).addClass('on');
     S.page = 0; loadWeb();
   });
-  $('#web-cat').on('change', function(){ S.cat = $(this).val(); S.page = 0; loadWeb(); });
+  $('#web-cats').on('click', 'button', function(){
+    S.cat = $(this).data('c');
+    $('#web-cats button').removeClass('on'); $(this).addClass('on');
+    S.page = 0; loadWeb();
+  });
+  $('#web-hidecdn').on('change', function(){ S.page = 0; loadWeb(); });
+  // 应用 / 域名 两个视角：应用来自固件 DPI（数据全、类目准），域名来自采样（能看具体站点）
+  $('#web-view').on('click', 'button', function(){
+    var v = $(this).data('v');
+    if (v === S.webView) return;
+    S.webView = v; S.page = 0; S.cat = 'all'; renderCatSide();
+    $('#web-view button').removeClass('on'); $(this).addClass('on');
+    $('#web-met').toggle(v !== 'app');
+    $('#web-hidecdn').closest('.kw-chk').toggle(v !== 'app');
+    loadWeb();
+  });
   var qt = null;
   $('#web-q').on('input', function(){
     var v = $(this).val().trim();
@@ -921,17 +2104,16 @@
   });
   $('#web-prev').on('click', function(){ if (S.page>0){ S.page--; loadWeb(); } });
   $('#web-next').on('click', function(){ S.page++; loadWeb(); });
-  $('#web-tbl').on('click', 'tr.roww', function(){
-    var d = $(this).data('dom'), day = $(this).data('day'), mac = $(this).data('mac');
-    drill(String(d), day, mac);
+  $('#web-tbl').on('click', 'tr.wr', function(){
+    drill(this, String($(this).data('dom')), $(this).data('day'), $(this).data('mac'));
   });
   $('#web-csv').on('click', function(){
     // 导出的是"当前筛选条件下的全部记录"，不是当前这一页
     var dump = function(rows){
       if (!rows.length) return;
-      var head = '日期,设备,网站,域名,类目,时长秒,次数,流量字节\n';
+      var head = '日期,设备,网站,域名,类目,时长秒,次数\n';
       var body = rows.map(function(x){
-        return [mmdd(x.day), x.who, x.name||'', x.dom||'', CATN[x.cat]||'', x.dur||0, x.n||0, x.by||0]
+        return [mmdd(x.day), x.who, x.name||'', x.dom||'', CATN[x.cat]||'', x.dur||0, x.n||0]
           .map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(',');
       }).join('\n');
       var blob = new Blob(['\ufeff'+head+body], {type:'text/csv;charset=utf-8'});
@@ -945,21 +2127,47 @@
     var p = {fn:'list', range:S.range, mac:S.mac, met:S.met,
              lim:Math.min(total, 5000), off:0};
     if (S.cat!=='all') p.cat = S.cat;
+    else if ($('#web-hidecdn').prop('checked')) p.nocdn = 1;
     if (S.q) p.q = S.q;
     api(p, function(e, d){ dump((d && d.rows) || []); });
   });
   $('#night-day').on('change', function(){ S.day = +$(this).val(); loadNight(); });
+  // 一晚一晚地翻，比每次都去下拉里找快
+  $('#night-prev').on('click', function(){
+    if (S.day <= midnightOf(new Date()) - 13*86400) return;
+    S.day -= 86400; loadNight();
+  });
+  $('#night-next').on('click', function(){
+    if (S.day >= lastNightDay()) return;
+    S.day += 86400; loadNight();
+  });
+  // 设备带：点一台就把明细收窄到它
+  $('#web-devs').on('click', '.kw-wdev', function(){ pickDev(String($(this).data('mac'))); });
+  // 夜间时间带两种口径：活跃度 / 流量。数据已经取回来了，只重画不重取。
+  $('#night-mode').on('click', 'button', function(){
+    var m = $(this).data('m');
+    if (m === nightMode) return;
+    nightMode = m;
+    $('#night-mode button').removeClass('on'); $(this).addClass('on');
+    if (NIGHT.all.length) renderNight(NIGHT.day || S.day, NIGHT.all);
+  });
   $('#sys-rng').on('click', 'button', function(){
     sysWin = $(this).data('w');
     $('#sys-rng button').removeClass('on'); $(this).addClass('on');
     loadSys();
   });
   $(window).on('resize', function(){
-    [hoursChart, cpuChart, tempChart].forEach(function(c){ if (c) c.resize(); });
+    [hoursChart, detailChart].forEach(function(c){ if (c) c.resize(); });
+    tipHide();
   });
 
   // 启动
-  applyTab(S.tab, false);
+  applyTab(S.tab);
+  renderCatSide();
+  if (S.webView !== 'app') fillCatSide();   // 应用视角由 loadWebApps 自己统计
+  // 应用视角下"排序/隐藏基础服务"没有意义，默认收起
+  $('#web-met').toggle(S.webView !== 'app');
+  $('#web-hidecdn').closest('.kw-chk').toggle(S.webView !== 'app');
   startLive();
   loadDevs(function(){
     var v = window.localStorage ? localStorage.getItem('kw.mac') : null;
