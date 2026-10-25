@@ -8,7 +8,7 @@ local function q(s)
 	return "'" .. s .. "'"
 end
 
--- 三页组成独立分组「守护视图」，排在固件「仪表板」之后。
+-- 四页组成独立分组「守护视图」，排在固件「仪表板」之后。
 -- 父节点名刻意取 fwx_guard：主题的 getMenuCategory() 只看节点名是否以 fwx 开头，
 -- 是则归普通模式，否则落到高级模式。用 kidwatch 这种名字会被推进高级模式，
 -- 所以这里不叫 admin/kidwatch。主题 JS 一行都不用改。
@@ -18,6 +18,7 @@ local NAV = {
 	{ "ov",    "概览",     10 },
 	{ "web",   "上网详单", 20 },
 	{ "night", "夜间守卫", 30 },
+	{ "sys",   "运行状态", 40 },
 }
 
 function index()
