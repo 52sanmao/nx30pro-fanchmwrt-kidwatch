@@ -8,25 +8,29 @@ local function q(s)
 	return "'" .. s .. "'"
 end
 
--- 四页组成独立分组「守护视图」，排在固件「仪表板」之后。
+-- 三页组成独立分组「守护视图」，order 5：紧跟固件「仪表板」(order 1)，
+-- 排在「系统监控」(12) /「终端列表」/「应用中心」(15) 之前。
 -- 父节点名刻意取 fwx_guard：主题的 getMenuCategory() 只看节点名是否以 fwx 开头，
 -- 是则归普通模式，否则落到高级模式。用 kidwatch 这种名字会被推进高级模式，
 -- 所以这里不叫 admin/kidwatch。主题 JS 一行都不用改。
 -- URL 末段仍是 ov/web/night，模板靠它决定打开哪个视角。
--- 本应用只新增自己的三页，固件自带页面（含仪表板）一概不动。
+-- 本应用只新增自己的页面，固件自带页面（含仪表板）一概不动。
 local NAV = {
 	{ "ov",    "概览",     10 },
 	{ "web",   "上网详单", 20 },
 	{ "night", "夜间守卫", 30 },
-	{ "sys",   "运行状态", 40 },
 }
 
 function index()
 	-- 标题直接写中文：这些词条不在固件的中文词表里，走 _() 会回落成英文
-	entry({"admin", "fwx_guard"}, firstchild(), "守护视图", 20).dependent = true
+	-- order 5：紧跟固件「仪表板」(order 1)，在「系统监控」(12) 之前
+	entry({"admin", "fwx_guard"}, firstchild(), "守护视图", 5).dependent = true
 	for idx, p in ipairs(NAV) do
 		entry({"admin", "fwx_guard", p[1]}, template("kidwatch/main"), p[2], p[3]).dependent = true
 	end
+	-- 「运行状态」不占守护视图：挂进固件「系统监控」组 (admin/fwx_monitor，
+	-- 固件 order 12) 的末尾，URL 末段保持 sys，模板据此打开整机指标视角。
+	entry({"admin", "fwx_monitor", "sys"}, template("kidwatch/main"), "运行状态", 60).dependent = true
 	entry({"admin", "kidwatch_api", "call"}, call("api")).leaf = true
 end
 
