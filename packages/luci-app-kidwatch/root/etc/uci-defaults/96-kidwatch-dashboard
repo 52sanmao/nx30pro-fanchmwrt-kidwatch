@@ -1,0 +1,4 @@
+#!/bin/sh
+# 安装后立即套用仪表板改动，不必等重启
+[ -n "$IPKG_INSTROOT" ] || /usr/lib/kidwatch/dashboard-patch.sh
+exit 0

@@ -12,6 +12,10 @@ start_service() {
 
 	mkdir -p /tmp/kidwatch /etc/kidwatch
 
+	# 固件升级会把 fwx 仪表板恢复原版，开机时顺带再套用一次我们的版本；
+	# 没装 luci-app-kidwatch 时这个脚本不存在，静默跳过。
+	[ -x /usr/lib/kidwatch/dashboard-patch.sh ] && /usr/lib/kidwatch/dashboard-patch.sh >/dev/null 2>&1
+
 	/usr/bin/kidwatch init
 
 	# 主数据源是 fwx 的实时表，这里只是每 3 分钟取一次快照，不再常驻读日志。

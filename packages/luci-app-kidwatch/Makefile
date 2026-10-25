@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-kidwatch
-PKG_VERSION:=1.1.2
+PKG_VERSION:=1.2.0
 PKG_RELEASE:=1
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=52sanmao <52sanmao@users.noreply.github.com>
@@ -23,8 +23,11 @@ define Package/luci-app-kidwatch/description
   per-device screen time, domain ranking, category mix, hourly heatmap,
   late-night usage guard and CPU/temperature history.
 
-  Does not touch the firmware's own pages: the stock dashboard is left
-  exactly as the firmware ships it.
+  Also ships a rebuilt copy of the firmware's own dashboard page (same data,
+  same IDs): right-side cards merged into one device card, the five KPI
+  tiles moved to a compact sidebar, chart empty states, and a fix for the
+  memory ring showing 0 MB. The stock file is backed up before the swap and
+  restored on uninstall.
 endef
 
 define Build/Compile
@@ -33,8 +36,27 @@ endef
 define Package/luci-app-kidwatch/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/kidwatch
+	$(INSTALL_DIR) $(1)/usr/lib/kidwatch
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_DATA) ./luasrc/controller/kidwatch.lua $(1)/usr/lib/lua/luci/controller/kidwatch.lua
 	$(INSTALL_DATA) ./luasrc/view/kidwatch/main.htm  $(1)/usr/lib/lua/luci/view/kidwatch/main.htm
+	# 固件仪表板的替换版本 + 套用脚本（原版由脚本首次运行时自行留存）
+	$(INSTALL_DATA) ./root/usr/lib/kidwatch/fwx-dashboard.htm      $(1)/usr/lib/kidwatch/fwx-dashboard.htm
+	$(INSTALL_BIN)  ./root/usr/lib/kidwatch/dashboard-patch.sh     $(1)/usr/lib/kidwatch/dashboard-patch.sh
+	$(INSTALL_BIN)  ./root/etc/uci-defaults/96-kidwatch-dashboard  $(1)/etc/uci-defaults/96-kidwatch-dashboard
+endef
+
+define Package/luci-app-kidwatch/postinst
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] || /usr/lib/kidwatch/dashboard-patch.sh
+exit 0
+endef
+
+define Package/luci-app-kidwatch/prerm
+#!/bin/sh
+# 卸载时把固件原版仪表板还原，不留一个"孤儿"改版页面
+[ -n "$${IPKG_INSTROOT}" ] || /usr/lib/kidwatch/dashboard-patch.sh restore
+exit 0
 endef
 
 $(eval $(call BuildPackage,luci-app-kidwatch))
