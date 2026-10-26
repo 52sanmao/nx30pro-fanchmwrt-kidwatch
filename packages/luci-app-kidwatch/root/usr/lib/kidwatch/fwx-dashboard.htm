@@ -1416,7 +1416,6 @@
     }
 
     /* ================= 2026-10 布局重构（评审实施） ================= */
-    .dash { grid-template-columns: minmax(0, 1fr) 264px; }
 
     /* 顶部设备总卡：系统信息 / CPU内存环 / 网络 / 网口 横排 */
     .device-card {
@@ -1652,231 +1651,1181 @@
     .list th:nth-child(6), .list td:nth-child(6) { width: 10%; }
     .list th:nth-child(7), .list td:nth-child(7) { width: 14%; }
     .list th:nth-child(8), .list td:nth-child(8) { width: 21%; }
+/* ==========================================================================
+       V3 Master Design: Clean, Uncluttered, Intuitive Architecture (2026-10-27)
+       ========================================================================== */
+    :root {
+        --dash-bg: #f8fafc;
+        --card-bg: #ffffff;
+        --card-border: #e2e8f0;
+        --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+        --card-radius: 12px;
+        --text-main: #0f172a;
+        --text-sub: #64748b;
+        --text-muted: #94a3b8;
+        --primary-blue: #2563eb;
+        --success-green: #10b981;
+        --purple-accent: #7c3aed;
+        --amber-accent: #f59e0b;
+        --pill-bg: #f1f5f9;
+        --pill-border: #cbd5e1;
+        --grid-line: rgba(0, 0, 0, 0.06);
+    }
+
+    [data-darkmode="true"] {
+        --dash-bg: #090d16;
+        --card-bg: #111827;
+        --card-border: rgba(255, 255, 255, 0.09);
+        --card-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
+        --text-main: #f8fafc;
+        --text-sub: #94a3b8;
+        --text-muted: #64748b;
+        --primary-blue: #3b82f6;
+        --success-green: #10b981;
+        --purple-accent: #8b5cf6;
+        --amber-accent: #fbbf24;
+        --pill-bg: #1e293b;
+        --pill-border: rgba(255, 255, 255, 0.12);
+        --grid-line: rgba(255, 255, 255, 0.06);
+    }
+
+    /* 主容器：单轴流，整齐划一 */
+    .dash {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 16px !important;
+        padding: 0 0 32px !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        /* 老样式给 .dash 定过 min-width:800px，手机上会把整页撑出屏幕 */
+        min-width: 0 !important;
+        grid-template-columns: none !important;
+        background: transparent !important;
+    }
+
+    /* 基础卡片规范 */
+    .card {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--card-border) !important;
+        border-radius: var(--card-radius) !important;
+        box-shadow: var(--card-shadow) !important;
+        box-sizing: border-box !important;
+        padding: 16px 18px !important;
+        position: relative !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    }
+
+    /* 统一卡片头部栏 */
+    .c-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        min-height: 24px;
+    }
+    .c-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-main);
+        letter-spacing: -0.2px;
+    }
+    .c-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        background: var(--pill-bg);
+        font-size: 13px;
+    }
+    .c-badge {
+        font-size: 12px;
+        font-weight: 500;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        background: var(--pill-bg);
+        color: var(--text-sub);
+        border: 1px solid var(--pill-border);
+    }
+    .c-badge.live {
+        background: rgba(16, 185, 129, 0.1);
+        border-color: rgba(16, 185, 129, 0.3);
+        color: #10b981;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    /* 呼吸脉冲灯 */
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #10b981;
+        display: inline-block;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: pulse-ring 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+    .pulse-dot.gray {
+        background-color: #94a3b8;
+        box-shadow: none;
+        animation: none;
+    }
+    @keyframes pulse-ring {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    /* ==========================================================================
+       LAYER 1: 网关全景状态条 (Gateway Cockpit Deck) —— 3 等分并列，高度 175px
+       ========================================================================== */
+    .deck-cockpit {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 16px !important;
+        width: 100% !important;
+    }
+    .deck-cockpit .card {
+        height: 175px !important;
+        justify-content: space-between !important;
+    }
+
+    /* 卡片 1: 外网连接 */
+    .wan-main-val {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-main);
+        letter-spacing: -0.5px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+        margin: 2px 0;
+    }
+    .wan-sub-desc {
+        font-size: 12px;
+        color: var(--text-sub);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .wan-metrics-strip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 10px;
+        border-top: 1px solid var(--grid-line);
+        margin-top: 4px;
+    }
+    .wan-metric-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .wan-metric-label {
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+    .wan-metric-data {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    /* 卡片 2: 硬件中枢 */
+    .vitals-meter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex: 1;
+        justify-content: center;
+    }
+    .vital-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+    }
+    .vital-label {
+        color: var(--text-sub);
+        width: 60px;
+    }
+    .vital-bar-box {
+        flex: 1;
+        height: 6px;
+        background: var(--pill-bg);
+        border-radius: 999px;
+        margin: 0 10px;
+        overflow: hidden;
+    }
+    .vital-bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        transition: width 0.4s ease;
+    }
+    .vital-val {
+        font-weight: 600;
+        color: var(--text-main);
+        min-width: 42px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+    .hw-footer-note {
+        font-size: 11px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 6px;
+        border-top: 1px solid var(--grid-line);
+    }
+
+    /* 卡片 3: 物理网口状态 */
+    .port-cockpit-grid {
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 8px !important;
+        flex: 1 !important;
+        align-items: center !important;
+    }
+    .port-brick {
+        background: var(--pill-bg);
+        border: 1px solid var(--pill-border);
+        border-radius: 8px;
+        padding: 8px 4px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        text-align: center;
+        transition: all 0.2s ease;
+    }
+    .port-brick.active {
+        background: rgba(16, 185, 129, 0.05);
+        border-color: rgba(16, 185, 129, 0.4);
+    }
+    .port-brick-led {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #94a3b8;
+    }
+    .port-brick.active .port-brick-led {
+        background: #10b981;
+        box-shadow: 0 0 6px rgba(16, 185, 129, 0.8);
+    }
+    .port-brick-name {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+    .port-brick-speed {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-sub);
+    }
+    .port-brick.active .port-brick-speed {
+        color: #10b981;
+        font-weight: 600;
+    }
+
+    /* ==========================================================================
+       LAYER 2: 实时网络与应用动态 (Activity Deck) —— 黄金双栏，高度 430px
+       ========================================================================== */
+    .deck-activity {
+        display: grid !important;
+        grid-template-columns: 63% calc(37% - 16px) !important;
+        gap: 16px !important;
+        width: 100% !important;
+    }
+    #traffic-card {
+        height: 430px !important;
+    }
+    .traffic-rate-capsules {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .rate-capsule {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        background: var(--pill-bg);
+        border: 1px solid var(--pill-border);
+    }
+    .rate-capsule.down {
+        border-color: rgba(37, 99, 235, 0.25);
+        background: rgba(37, 99, 235, 0.06);
+    }
+    .rate-capsule.up {
+        border-color: rgba(124, 58, 237, 0.25);
+        background: rgba(124, 58, 237, 0.06);
+    }
+    .rate-tag {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-sub);
+    }
+    .rate-capsule.down .rate-tag { color: var(--primary-blue); }
+    .rate-capsule.up .rate-tag { color: var(--purple-accent); }
+    .rate-num {
+        font-size: 15px;
+        font-weight: 700;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+        color: var(--text-main);
+    }
+    #line-wan {
+        width: 100% !important;
+        height: 335px !important;
+        flex: 1 !important;
+        min-height: 0 !important;
+    }
+
+    /* 右侧双卡片容器 (总高 430px) */
+    .activity-right-col {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 16px !important;
+        height: 430px !important;
+    }
+    #active-app-card {
+        height: 195px !important;
+        margin: 0 !important;
+    }
+    #active-url-card {
+        height: 219px !important;
+        margin: 0 !important;
+    }
+
+    /* DPI 活跃应用瓷贴 */
+    .app-tiles-matrix {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        flex: 1;
+        align-items: center;
+    }
+    .app-tile-unit {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: var(--pill-bg);
+        border: 1px solid var(--pill-border);
+        transition: transform 0.15s ease;
+    }
+    .app-tile-unit:hover {
+        transform: translateY(-1px);
+    }
+    .app-tile-ico {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+        color: #fff;
+    }
+    .app-tile-info {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .app-tile-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .app-tile-sub {
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    /* 实时访问网址流 */
+    .active-url-stream-box {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 4px;
+    }
+    .active-url-stream-box::-webkit-scrollbar {
+        width: 4px;
+    }
+    .active-url-stream-box::-webkit-scrollbar-thumb {
+        background: var(--pill-border);
+        border-radius: 4px;
+    }
+    .active-url-item {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 6px 10px !important;
+        border-radius: 6px !important;
+        background: var(--pill-bg) !important;
+        border: 1px solid var(--grid-line) !important;
+        font-size: 12px !important;
+        gap: 8px !important;
+    }
+    .active-url-url {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace !important;
+        color: var(--text-main) !important;
+        font-weight: 500 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        flex: 1 !important;
+    }
+    .active-url-device {
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        padding: 1px 6px !important;
+        border-radius: 4px !important;
+        background: rgba(0, 0, 0, 0.05) !important;
+        white-space: nowrap !important;
+    }
+    [data-darkmode="true"] .active-url-device {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* ==========================================================================
+       LAYER 3: 深度洞察与统计 (Analytics Deck) —— 50% : 50%，高度 380px
+       ========================================================================== */
+    .deck-analytics {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 16px !important;
+        width: 100% !important;
+    }
+    #pie-app-card, #bar-user-traffic-card {
+        height: 380px !important;
+        min-height: 380px !important;
+    }
+    
+    /* 环形图区域 */
+    .pie-layout-wrap {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        width: 100%;
+        position: relative;
+    }
+    #pie-app {
+        flex: 1.1 !important;
+        height: 290px !important;
+        min-height: 0 !important;
+    }
+    .pie-center-hub {
+        position: absolute;
+        left: 27%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .pie-center-hub b {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text-main);
+        line-height: 1.1;
+    }
+    .pie-center-hub span {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 2px;
+    }
+    .pie-legend-side {
+        flex: 0.9;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding-left: 10px;
+    }
+    .pie-side-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+    }
+    .pie-side-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-sub);
+    }
+    .pie-side-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+    .pie-side-val {
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    /* 终端流量排行榜 */
+    #bar-user-traffic {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        flex: 1 !important;
+        justify-content: center !important;
+        overflow: hidden !important;
+    }
+    .user-traffic-row {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 4px 0 !important;
+    }
+    .user-traffic-rank {
+        width: 22px !important;
+        height: 22px !important;
+        border-radius: 6px !important;
+        background: var(--pill-bg) !important;
+        border: 1px solid var(--pill-border) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        color: var(--text-sub) !important;
+    }
+    .user-traffic-row:nth-child(1) .user-traffic-rank {
+        background: linear-gradient(135deg, #fbbf24, #d97706) !important;
+        color: #ffffff !important;
+        border: none !important;
+    }
+    .user-traffic-row:nth-child(2) .user-traffic-rank {
+        background: linear-gradient(135deg, #94a3b8, #64748b) !important;
+        color: #ffffff !important;
+        border: none !important;
+    }
+    .user-traffic-row:nth-child(3) .user-traffic-rank {
+        background: linear-gradient(135deg, #d97706, #92400e) !important;
+        color: #ffffff !important;
+        border: none !important;
+    }
+    .user-traffic-avatar {
+        width: 28px !important;
+        height: 28px !important;
+        border-radius: 8px !important;
+        background: var(--avatar-color, #3b82f6) !important;
+        color: #ffffff !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-weight: 700 !important;
+        font-size: 12px !important;
+    }
+    .user-traffic-info {
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 4px !important;
+    }
+    .user-traffic-name {
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--text-main) !important;
+    }
+    .user-traffic-meter {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+    }
+    .user-traffic-track {
+        flex: 1 !important;
+        height: 7px !important;
+        background: var(--pill-bg) !important;
+        border-radius: 999px !important;
+        overflow: hidden !important;
+    }
+    .user-traffic-fill {
+        height: 100% !important;
+        background: linear-gradient(90deg, #3b82f6, #06b6d4) !important;
+        border-radius: 999px !important;
+        display: block !important;
+    }
+    .user-traffic-total {
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: var(--text-main) !important;
+        min-width: 55px !important;
+        text-align: right !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace !important;
+    }
+
+    /* ==========================================================================
+       LAYER 4: 在线终端管理中枢 (Connected Devices Management) —— 100% 全宽
+       ========================================================================== */
+    #active-clients-card {
+        width: 100% !important;
+        padding: 0 !important;
+    }
+    .client-card-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--grid-line);
+    }
+    .client-filter-capsules {
+        display: flex;
+        gap: 6px;
+    }
+    .client-filter-btn {
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        background: var(--pill-bg);
+        border: 1px solid var(--pill-border);
+        color: var(--text-sub);
+        transition: all 0.2s;
+    }
+    .client-filter-btn.active, .client-filter-btn:hover {
+        background: var(--primary-blue);
+        color: #ffffff;
+        border-color: var(--primary-blue);
+    }
+    .client-table-scroll {
+        overflow-x: auto;
+        width: 100%;
+    }
+    .client-modern-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        text-align: left;
+    }
+    .client-modern-table th {
+        background: var(--pill-bg);
+        color: var(--text-sub);
+        font-weight: 600;
+        font-size: 12px;
+        padding: 10px 18px;
+        border-bottom: 1px solid var(--card-border);
+        white-space: nowrap;
+    }
+    .client-modern-table td {
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--grid-line);
+        color: var(--text-main);
+        vertical-align: middle;
+    }
+    .client-modern-table tbody tr:hover {
+        background: rgba(37, 99, 235, 0.03);
+    }
+    [data-darkmode="true"] .client-modern-table tbody tr:hover {
+        background: rgba(255, 255, 255, 0.02);
+    }
+    .client-device-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .client-device-name {
+        font-weight: 600;
+        color: var(--text-main);
+    }
+    .client-device-mac {
+        font-size: 11px;
+        color: var(--text-muted);
+        font-family: monospace;
+    }
+    .app-tag-pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 500;
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--primary-blue);
+    }
+
+    /* 老页面在 768px 以下会把 .dash 藏起来、改用 #dashboard-mobile 搬卡片；
+       V3 的响应式在 CSS 里完成，这个容器彻底停用 */
+    .dashboard_mobile {
+        display: none !important;
+    }
+
+    /* 图标容器内的字母块 / 应用图标：由外层 .app-tile-ico 提供底色与圆角 */
+    .app-tile-ico .app-icon-letter {
+        background: transparent !important;
+        width: auto !important;
+        height: auto !important;
+        border-radius: 0 !important;
+        font-size: 13px !important;
+        line-height: 1 !important;
+    }
+    .app-tile-ico img.app-icon,
+    .app-tile-ico img {
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: inherit !important;
+        object-fit: cover;
+    }
+    /* 空态/加载态交给脚本控制显隐，这里只保证叠在图表上方 */
+    #traffic-card .kw-empty,
+    #pie-app-card .kw-empty {
+        position: absolute;
+        inset: 52px 8px 8px 8px;
+        z-index: 3;
+    }
+
+    /* ==========================================================================
+       响应式：V3 原稿只画了桌面宽度，这里补三档给真机（平板 / 手机）用
+       ========================================================================== */
+    @media (max-width: 1280px) {
+        .deck-activity {
+            grid-template-columns: 1fr !important;
+        }
+        .activity-right-col {
+            height: auto !important;
+            flex-direction: row !important;
+        }
+        .activity-right-col > .card {
+            flex: 1 1 0 !important;
+            min-width: 0 !important;
+        }
+        #active-app-card,
+        #active-url-card {
+            height: 220px !important;
+        }
+        #traffic-card {
+            height: 360px !important;
+        }
+    }
+
+    @media (max-width: 1024px) {
+        .deck-cockpit {
+            grid-template-columns: 1fr !important;
+        }
+        .deck-cockpit .card {
+            height: auto !important;
+            min-height: 150px !important;
+        }
+        .deck-analytics {
+            grid-template-columns: 1fr !important;
+        }
+        #pie-app-card,
+        #bar-user-traffic-card {
+            height: auto !important;
+            min-height: 340px !important;
+        }
+        .activity-right-col {
+            flex-direction: column !important;
+        }
+        /* 单列时不能再让卡片 flex:1 均分，否则高度会被压成一条 */
+        .activity-right-col > .card {
+            flex: 0 0 auto !important;
+        }
+        #active-app-card,
+        #active-url-card {
+            height: 210px !important;
+        }
+        /* 网口数量随机型变化，写死 4 列在窄屏会横向溢出 */
+        .port-cockpit-grid {
+            grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)) !important;
+        }
+        .wan-metrics-strip {
+            flex-wrap: wrap;
+            gap: 6px 16px;
+        }
+        .deck-cockpit .card {
+            min-height: 176px !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dash {
+            gap: 12px !important;
+        }
+        .hw-footer-note {
+            flex-wrap: wrap;
+            gap: 2px 10px;
+        }
+        .card {
+            padding: 14px !important;
+        }
+        .app-tiles-matrix {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+        .port-cockpit-grid {
+            grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)) !important;
+        }
+        .pie-layout-wrap {
+            flex-direction: column !important;
+            align-items: stretch !important;
+        }
+        #pie-app {
+            flex: none !important;
+            width: 100% !important;
+            height: 240px !important;
+        }
+        .pie-center-hub {
+            left: 50% !important;
+            top: 130px !important;
+        }
+        .pie-legend-side {
+            flex: none !important;
+            padding-left: 0 !important;
+            margin-top: 8px !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 6px 12px !important;
+        }
+        .client-card-topbar {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .client-filter-capsules {
+            flex-wrap: wrap;
+        }
+        /* 终端表在手机上转成卡片列表，靠 data-label 撑住每一行的语义 */
+        .client-modern-table thead {
+            display: none;
+        }
+        .client-modern-table,
+        .client-modern-table tbody,
+        .client-modern-table tr,
+        .client-modern-table td {
+            display: block !important;
+            width: 100% !important;
+        }
+        .client-modern-table tr {
+            border: 1px solid var(--card-border) !important;
+            border-radius: 10px !important;
+            margin: 0 12px 10px !important;
+            padding: 10px 12px !important;
+            background: var(--pill-bg) !important;
+        }
+        .client-modern-table td {
+            display: flex !important;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 3px 0 !important;
+            border: 0 !important;
+            text-align: right;
+        }
+        .client-modern-table td::before {
+            content: attr(data-label);
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 500;
+            text-align: left;
+            flex: 0 0 auto;
+        }
+        .client-modern-table td:first-child {
+            justify-content: flex-start;
+            padding-bottom: 8px !important;
+        }
+        .client-modern-table td:first-child::before {
+            content: none;
+        }
+        .client-table-scroll {
+            padding-top: 12px;
+        }
+    }
 </style>
 
 <div class="dash">
-    <div>
-        <div class="card device-card" id="device-overview">
-<div class="mini compact-mini" id="sys-info-card" style="position:relative;">
-            <div class="mini-title with-help" id="sysinfo-title"><%:System Info%></div>
-            <div id="sysinfo-tooltip" class="tooltip tooltip-left" style="display:none;"></div>
-            <div class="compact-kv">
-                <div class="compact-row">
-                    <span class="compact-label" id="sys-model-label"><%:Device Model%></span>
-                    <span class="compact-value" id="sys-model">--</span>
-                </div>
-                <div class="compact-row">
-                    <span class="compact-label"><%:Hostname%></span>
-                    <span class="compact-value" id="sys-hostname">--</span>
-                </div>
-                <div class="compact-row">
-                    <span class="compact-label"><%:Firmware Version%></span>
-                    <span class="compact-value" id="sys-version">--</span>
-                </div>
-                <div class="compact-row">
-                    <span class="compact-label"><%:Kernel Version%></span>
-                    <span class="compact-value" id="sys-kernel-version">--</span>
-                </div>
-                <div class="compact-row">
-                    <span class="compact-label"><%:Uptime%></span>
-                    <span class="compact-value" id="sys-uptime">--</span>
-                </div>
-            </div>
-            <div style="display:none;">
-                <span id="sys-cpu-model-name">--</span>
-            </div>
-        </div>
-        <div class="mini" id="running-status-card">
-            <div style="font-weight:400; margin-bottom:10px;"><%:Running Status%></div>
-            
-            <svg style="position:absolute; width:0; height:0;">
-                <defs>
-                    <linearGradient id="cpuGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color:#26f7de;stop-opacity:1" />
-                        <stop offset="100%" style="stop-color:#17d8ff;stop-opacity:1" />
-                    </linearGradient>
-                    <linearGradient id="memGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color:#74e3ff;stop-opacity:1" />
-                        <stop offset="100%" style="stop-color:#56b9ff;stop-opacity:1" />
-                    </linearGradient>
-                </defs>
-            </svg>
-            
-            <div style="display:flex; gap:20px; justify-content:space-around; align-items:flex-start;">
-                <div class="circular-progress cpu">
-                    <div class="circular-progress-wrapper">
-                        <svg>
-                            <circle class="progress-ring-bg" cx="42.5" cy="42.5" r="35"></circle>
-                            <circle class="progress-ring" cx="42.5" cy="42.5" r="35" id="cpu-ring"></circle>
-                        </svg>
-                        <div class="circular-progress-text" id="cpu-text">0%</div>
-                    </div>
-                    <div class="circular-progress-label">CPU</div>
-                </div>
-                <div class="circular-progress mem">
-                    <div class="circular-progress-wrapper">
-                        <svg>
-                            <circle class="progress-ring-bg" cx="42.5" cy="42.5" r="35"></circle>
-                            <circle class="progress-ring" cx="42.5" cy="42.5" r="35" id="mem-ring"></circle>
-                        </svg>
-                        <div class="circular-progress-text" id="mem-text">0%</div>
-                    </div>
-                    <div class="circular-progress-label"><%:Memory%></div>
-                </div>
-            </div>
-        </div>
-        <div class="mini compact-mini" id="network-card" style="position:relative;">
-            <div class="mini-title with-help" id="network-title"><%:Network%></div>
-            <div id="network-tooltip" class="tooltip tooltip-left" style="display:none;"></div>
-            <div class="compact-kv" id="network-info">
-                <div class="compact-row">
-                    <span class="compact-label">WAN</span>
-                    <span class="compact-value" id="network-wan-summary">--</span>
-                </div>
-                <div class="compact-row">
-                    <span class="compact-label">LAN</span>
-                    <span class="compact-value" id="network-lan-summary">--</span>
-                </div>
-                <div class="compact-row">
-                    <span class="compact-label"><%:Gateway%></span>
-                    <span class="compact-value" id="network-gateway-summary">--</span>
-                </div>
-                <div class="compact-row">
-                    <span class="compact-label"><%:DNS%></span>
-                    <span class="compact-value" id="network-dns-summary">--</span>
-                </div>
-            </div>
-        </div>
-        <div class="mini compact-mini" id="port-status-card">
-            <div class="mini-title"><%:Port Status%></div>
-            <div class="port-grid" id="port-status-grid"></div>
-        </div>
-        <div class="mini compact-mini" id="env-storage-card">
-            <div class="env-row">
-                <div class="env-head">
-                    <span class="env-label" id="env-primary-label"><%:Temperature%></span>
-                    <span class="env-value" id="cpu-temp-text">--</span>
-                </div>
-                <div class="meter">
-                    <div id="cpu-temp-bar" class="bar"></div>
-                </div>
-            </div>
-            <div class="env-row">
-                <div class="env-head">
-                    <span class="env-label"><%:Disk Space%></span>
-                    <span class="env-value" id="storage-overlay-text">--</span>
-                </div>
-                <div class="meter">
-                    <div id="storage-overlay-bar" class="bar"></div>
-                </div>
-            </div>
-        </div>
-                </div>
 
-        <div class="main-grid">
-            
+    <!-- ==========================================================================
+         DECK 1: 网关全景状态条
+         ========================================================================== -->
+    <div class="deck-cockpit">
 
-            <div class="card full" id="traffic-card">
-                <div class="card-head">
-                    <h3 id="traffic-title"><%:Real-time Traffic%></h3>
-                    <div id="wan-realtime-rate" class="rate-badges">
-                        <span class="rate-badge up" title="<%:Upload%>"><span class="arrow">&#8593;</span><span id="wan-up-rate">0 KB/s</span></span>
-                        <span class="rate-badge" title="<%:Download%>"><span class="arrow">&#8595;</span><span id="wan-down-rate">0 KB/s</span></span>
-                    </div>
+        <!-- 卡片 1: 外网连接状态 -->
+        <div class="card" id="wan-status-card">
+            <div class="c-header">
+                <div class="c-title">
+                    <span class="c-icon">&#127760;</span>
+                    <span>外网连接 (WAN)</span>
                 </div>
-                <div id="line-wan" class="chart-container"></div>
-                <div class="kw-empty" id="line-wan-empty">
-                    <span class="kw-empty-dot"></span>
-                    <span class="kw-empty-text">加载中…</span>
+                <span class="c-badge live" id="wan-status-badge">
+                    <span class="pulse-dot" id="wan-status-dot"></span>
+                    <span id="internet-status">--</span>
+                </span>
+            </div>
+            <div>
+                <div class="wan-main-val" id="wan-ip-display">--</div>
+                <div class="wan-sub-desc">
+                    <span id="wan-desc">--</span>
                 </div>
             </div>
-            <div class="card full" id="active-app-card">
-                <h3>正在访问</h3>
-                <div class="app-grid" id="active-apps"></div>
-    </div>
-            <div class="card" id="pie-app-card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <h3 style="margin:0;"><%:App Duration Statistics%></h3>
-                    <span class="app-stats-select-wrap">
-                        <select id="app-stats-select" class="app-stats-select">
-                            <option value="hourly">近一小时</option>
-                            <option value="daily" selected>今日</option>
-                        </select>
-                    </span>
+            <div class="wan-metrics-strip">
+                <div class="wan-metric-item">
+                    <span class="wan-metric-label">今日下载</span>
+                    <span class="wan-metric-data" id="dash-down-total" style="color: #0284c7;">--</span>
                 </div>
-                <div class="pie-chart-wrap">
-                    <div id="pie-app" class="chart-container"></div>
-                    <div class="pie-center" id="pie-center" style="display:none;">
-                        <b id="pie-center-value">--</b>
-                        <span id="pie-center-label">今日总计</span>
-                    </div>
+                <div class="wan-metric-item">
+                    <span class="wan-metric-label">今日上传</span>
+                    <span class="wan-metric-data" id="dash-up-total" style="color: #7c3aed;">--</span>
                 </div>
-                <div class="kw-empty" id="pie-app-empty">
-                    <span class="kw-empty-dot"></span>
-                    <span class="kw-empty-text">加载中…</span>
+                <div class="wan-metric-item">
+                    <span class="wan-metric-label">NAT 并发数</span>
+                    <span class="wan-metric-data" id="mini-conn">0</span>
                 </div>
-            </div>
-            <div class="card" id="bar-user-traffic-card">
-                <h3><%:Today's Traffic Ranking%></h3>
-                <div id="bar-user-traffic" class="user-traffic-list"></div>
-            </div>
-
-            <div class="card list full" id="active-clients-card">
-                <h3><%:Active Terminals Top8%></h3>
-                <table>
-                    <thead>
-                        <tr><th>&#32456;&#31471;&#20449;&#24687;</th><th><%:IP%></th><th><%:Upstream Rate%></th><th><%:Downstream Rate%></th><th><%:Upstream Traffic%></th><th><%:Downstream Traffic%></th><th><%:Current App%></th><th><%:Current URL%></th></tr>
-                    </thead>
-                    <tbody id="client-body"></tbody>
-                </table>
+                <div class="wan-metric-item">
+                    <span class="wan-metric-label">今日总吞吐</span>
+                    <span class="wan-metric-data" id="mini-traffic">--</span>
+                </div>
             </div>
         </div>
+
+        <!-- 卡片 2: 路由器性能与运行状态 -->
+        <div class="card" id="router-vitals-card">
+            <div class="c-header">
+                <div class="c-title">
+                    <span class="c-icon">&#9889;</span>
+                    <span id="sys-model" title="">--</span>
+                </div>
+                <span class="c-badge" id="dash-chip-badge">--</span>
+            </div>
+            <div class="vitals-meter-group">
+                <div class="vital-row">
+                    <span class="vital-label">CPU 负载</span>
+                    <div class="vital-bar-box">
+                        <div class="vital-bar-fill" id="cpu-bar" style="width: 0%; background: #3b82f6;"></div>
+                    </div>
+                    <span class="vital-val" id="cpu-pct">--</span>
+                </div>
+                <div class="vital-row">
+                    <span class="vital-label">内存占用</span>
+                    <div class="vital-bar-box">
+                        <div class="vital-bar-fill" id="mem-bar" style="width: 0%; background: #8b5cf6;"></div>
+                    </div>
+                    <span class="vital-val" id="mem-pct">--</span>
+                </div>
+                <div class="vital-row">
+                    <span class="vital-label" id="cpu-temp-label">核心温度</span>
+                    <div class="vital-bar-box">
+                        <div class="vital-bar-fill" id="cpu-temp-bar" style="width: 0%; background: #10b981;"></div>
+                    </div>
+                    <span class="vital-val" id="cpu-temp-text">--</span>
+                </div>
+            </div>
+            <div class="hw-footer-note">
+                <span>运行时间 <b id="sys-uptime" style="color:var(--text-main);">--</b></span>
+                <span id="cpu-model-note" title="">--</span>
+            </div>
+        </div>
+
+        <!-- 卡片 3: 物理网口状态 -->
+        <div class="card" id="port-status-card">
+            <div class="c-header">
+                <div class="c-title">
+                    <span class="c-icon">&#128268;</span>
+                    <span>物理网口矩阵</span>
+                </div>
+                <span class="c-badge" id="port-speed-badge">--</span>
+            </div>
+            <div class="port-cockpit-grid" id="port-status-grid"></div>
+            <div class="hw-footer-note">
+                <span id="port-summary">--</span>
+                <span id="port-count-note">--</span>
+            </div>
+        </div>
+
     </div>
 
-    <div class="right-col">
-        <div class="top-stats sidebar-stats">
-            <a class="mini" href="<%=url('admin/fwx_network/' .. network_setting)%>">
-                <div class="stat-head">
-                    <span class="stat-label"><%:Internet Status%></span>
-                    <span class="stat-icon icon-sphere" aria-hidden="true"></span>
+    <!-- ==========================================================================
+         DECK 2: 实时网络与应用动态
+         ========================================================================== -->
+    <div class="deck-activity">
+
+        <!-- 左卡片: 实时带宽图表 -->
+        <div class="card" id="traffic-card">
+            <div class="c-header">
+                <div class="c-title">
+                    <span class="c-icon">&#128200;</span>
+                    <span id="traffic-title">实时网络流量</span>
                 </div>
-                <div id="internet-status" class="top-stat-value"></div>
-            </a>
-            <a class="mini" href="<%=url('admin/fwx_internet_record/base_setting')%>">
-                <div class="stat-head">
-                    <span class="stat-label"><%:Online App%></span>
-                    <span class="stat-icon icon-application" aria-hidden="true"></span>
+                <div class="traffic-rate-capsules" id="wan-realtime-rate">
+                    <div class="rate-capsule down">
+                        <span class="rate-tag">&#11015; 下载</span>
+                        <span class="rate-num" id="wan-down-rate">0 KB/s</span>
+                    </div>
+                    <div class="rate-capsule up">
+                        <span class="rate-tag">&#11014; 上传</span>
+                        <span class="rate-num" id="wan-up-rate">0 KB/s</span>
+                    </div>
                 </div>
-                <div id="app-count" class="top-stat-value">0</div>
-            </a>
-            <a class="mini" href="<%=url('admin/fwx_user/list')%>">
-                <div class="stat-head">
-                    <span class="stat-label"><%:Online User%></span>
-                    <span class="stat-icon icon-user" aria-hidden="true"></span>
-                </div>
-                <div id="mini-online" class="top-stat-value">0</div>
-            </a>
-            <a class="mini" href="<%=url('admin/fwx_monitor/session_stat/global_session')%>">
-                <div class="stat-head">
-                    <span class="stat-label"><%:Connections%></span>
-                    <span class="stat-icon icon-connect" aria-hidden="true"></span>
-                </div>
-                <div id="mini-conn" class="top-stat-value">0</div>
-            </a>
-            <a class="mini" href="<%=url('admin/fwx_monitor/traffic_stat')%>">
-                <div class="stat-head">
-                    <span class="stat-label"><%:Today Traffic%></span>
-                    <span class="stat-icon icon-flow" aria-hidden="true"></span>
-                </div>
-                <div id="mini-traffic" class="top-stat-value">0MB</div>
-            </a>
+            </div>
+            <div id="line-wan" class="chart-container"></div>
+            <div id="line-wan-empty" class="kw-empty">
+                <span class="kw-empty-dot"></span>
+                <span class="kw-empty-text">加载中…</span>
+            </div>
         </div>
 
-        <div class="card" id="active-url-card">
-            <h3><%:Active Websites%></h3>
-            <div id="active-url-list" class="active-url-list"></div>
+        <!-- 右侧双卡片容器 -->
+        <div class="activity-right-col">
+
+            <!-- 上子卡片: DPI 活跃应用 -->
+            <div class="card" id="active-app-card">
+                <div class="c-header" style="margin-bottom:8px;">
+                    <div class="c-title">
+                        <span class="c-icon">&#128241;</span>
+                        <span>活跃应用 (DPI识别)</span>
+                    </div>
+                    <span class="c-badge" id="app-count">0</span>
+                </div>
+                <div class="app-tiles-matrix" id="active-apps"></div>
+            </div>
+
+            <!-- 下子卡片: 实时外网访问流 -->
+            <div class="card" id="active-url-card">
+                <div class="c-header" style="margin-bottom:8px;">
+                    <div class="c-title">
+                        <span class="c-icon">&#127760;</span>
+                        <span>实时外网访问流</span>
+                    </div>
+                    <span class="c-badge live"><span class="pulse-dot"></span>监听中</span>
+                </div>
+                <div class="active-url-stream-box" id="active-url-list"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ==========================================================================
+         DECK 3: 深度洞察与统计
+         ========================================================================== -->
+    <div class="deck-analytics">
+
+        <!-- 左卡片: 应用分类与耗时分布 -->
+        <div class="card" id="pie-app-card">
+            <div class="c-header">
+                <div class="c-title">
+                    <span class="c-icon">&#129383;</span>
+                    <span id="app-stats-title">应用分类耗时分布</span>
+                </div>
+                <!-- 原生下拉藏在这个 wrap 里（固件 CSS 已把它设为 display:none）。
+                     老脚本 initAppStatsCustomSwitch() 会把自定义的 #app-stats-switch
+                     插到 wrap 之后。这里不能再静态写一份 #app-stats-switch：
+                     那个函数开头有「$('#app-stats-switch').length 就 return」的保护，
+                     一旦静态存在就会提前返回，下面的点击事件绑不上，控件变死。 -->
+                <span class="app-stats-select-wrap">
+                    <select id="app-stats-select" class="app-stats-select">
+                        <option value="hourly">近一小时</option>
+                        <option value="daily" selected>今日</option>
+                    </select>
+                </span>
+            </div>
+            <div class="pie-layout-wrap">
+                <div id="pie-app" class="chart-container"></div>
+                <div class="pie-center-hub" id="pie-center" style="display:none;">
+                    <b id="pie-center-value">--</b>
+                    <span id="pie-center-label">今日活跃总时长</span>
+                </div>
+                <div class="pie-legend-side" id="pie-legend"></div>
+            </div>
+            <div id="pie-app-empty" class="kw-empty">
+                <span class="kw-empty-dot"></span>
+                <span class="kw-empty-text">加载中…</span>
+            </div>
+        </div>
+
+        <!-- 右卡片: 今日终端流量排行榜 -->
+        <div class="card" id="bar-user-traffic-card">
+            <div class="c-header">
+                <div class="c-title">
+                    <span class="c-icon">&#127942;</span>
+                    <span>今日终端流量排行榜</span>
+                </div>
+                <span class="c-badge" id="bar-total-badge">--</span>
+            </div>
+            <div id="bar-user-traffic"></div>
+        </div>
+
+    </div>
+
+    <!-- ==========================================================================
+         DECK 4: 在线终端管理中枢
+         ========================================================================== -->
+    <div class="card" id="active-clients-card">
+        <div class="client-card-topbar">
+            <div class="c-title">
+                <span class="c-icon">&#128187;</span>
+                <span>在线终端全要素管理</span>
+                <span class="c-badge" id="mini-online" style="margin-left:6px;">0</span>
+            </div>
+            <div class="client-filter-capsules" id="client-filter-capsules">
+                <button type="button" class="client-filter-btn active" data-filter="all">全部</button>
+                <button type="button" class="client-filter-btn" data-filter="active">在用中</button>
+                <button type="button" class="client-filter-btn" data-filter="idle">空闲</button>
+            </div>
+        </div>
+        <div class="client-table-scroll">
+            <table class="client-modern-table">
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">终端信息</th>
+                        <th style="width: 14%;">IP 地址</th>
+                        <th style="width: 11%;">上行速率</th>
+                        <th style="width: 11%;">下行速率</th>
+                        <th style="width: 11%;">今日上传</th>
+                        <th style="width: 11%;">今日下载</th>
+                        <th style="width: 11%;">当前 APP</th>
+                        <th style="width: 11%;">当前 URL</th>
+                    </tr>
+                </thead>
+                <tbody id="client-body"></tbody>
+            </table>
         </div>
     </div>
+
+    <!-- ==========================================================================
+         隐藏兼容层：老脚本会读写的节点，不参与渲染
+         ========================================================================== -->
+    <div id="compat-hidden-layer" style="display:none !important;">
+        <span id="sys-hostname">--</span>
+        <span id="sys-version">--</span>
+        <span id="sys-kernel-version">--</span>
+        <span id="sys-cpu-model-name">--</span>
+        <span id="sys-client-num">0</span>
+        <span id="sys-connections">0</span>
+        <span id="sys-mem-total">--</span>
+        <div id="sys-info-card"></div>
+        <div id="running-status-card"></div>
+        <div id="network-card"></div>
+        <div id="device-overview"></div>
+        <div id="sysinfo-tooltip"></div>
+        <div id="env-storage-card">
+            <span id="env-primary-label"></span>
+            <span id="storage-overlay-text"></span>
+            <span id="storage-overlay-bar"></span>
+        </div>
+        <span id="sys-model-label"></span>
+        <div id="network-tooltip"></div>
+    </div>
+
 </div>
 
 <div class="dashboard_mobile" id="dashboard-mobile"></div>
@@ -2192,7 +3141,7 @@
             return;
         }
         if (!Array.isArray(portList) || portList.length === 0) {
-            $grid.html('<div class="port-empty" style="grid-column:1 / -1;">' + _NoData + '</div>');
+            $grid.html('<div class="no-data" style="grid-column:1 / -1;text-align:center;padding:10px 0;">' + _NoData + '</div>');
             return;
         }
 
@@ -2235,10 +3184,11 @@
                               '<div class="tooltip-row"><span class="tooltip-label">' + _TxPackets + ':</span><span class="tooltip-value">' + escapeHtml(port && port.tx_packets !== undefined ? port.tx_packets : 0) + '</span></div>' +
                               '<div class="tooltip-row"><span class="tooltip-label">' + _RxErrorPackets + ':</span><span class="tooltip-value">' + escapeHtml(port && port.rx_error_packets !== undefined ? port.rx_error_packets : 0) + '</span></div>' +
                               '<div class="tooltip-row"><span class="tooltip-label">' + _TxErrorPackets + ':</span><span class="tooltip-value">' + escapeHtml(port && port.tx_error_packets !== undefined ? port.tx_error_packets : 0) + '</span></div>';
-            html += '<div class="port-item ' + getPortSpeedClass(port) + ' port-' + (role === 'wan' ? 'wan' : 'lan') + '">' +
-                    '<span class="port-icon"></span>' +
-                    '<span class="port-name">' + escapeHtml(displayName) + '</span>' +
-                    '<span class="port-speed">' + escapeHtml(speedText) + '</span>' +
+            var portUp = parseInt(port && port.up, 10) === 1;
+            html += '<div class="port-brick' + (portUp ? ' active' : '') + ' port-' + (role === 'wan' ? 'wan' : 'lan') + '">' +
+                    '<div class="port-brick-led"></div>' +
+                    '<div class="port-brick-name">' + escapeHtml(displayName) + '</div>' +
+                    '<div class="port-brick-speed">' + escapeHtml(portUp ? speedText : _Disconnected) + '</div>' +
                     '<span class="tooltip tooltip-left">' + tooltipHtml + '</span>' +
                     '</div>';
         });
@@ -2658,6 +3608,7 @@
         }
         
         updateActiveHosts((hosts.list || []).slice(0, 8));
+        v3SyncDashboard(data);
     }
     
     function formatUptime(seconds){
@@ -2717,7 +3668,7 @@
         update_layout();
     }
 
-    init_dashboard_mobile();
+    /* V3 由 CSS 媒体查询接管布局，卡片不再由 JS 搬进 #dashboard-mobile */
 
     function fit_active_urls() {
         $('#active-url-list .active-url-url').each(function() { fit_active_url(this); });
@@ -2803,7 +3754,7 @@
                 return name + '<br/>' + timeStr + ' (' + percent.toFixed(1) + '%)';
             }
         },
-        legend:{bottom:0, textStyle:{color:axisLabelColor}},
+        legend:{show:false},
         grid: {
             top: '5%', 
             bottom: '10%'
@@ -2812,6 +3763,10 @@
             type:'pie', 
             radius:['50%','65%'], 
             center: ['50%', '45%'], 
+            /* 分类名已由右侧图例承担，扇区外标签会压到卡片边界外 */
+            label:{show:false},
+            labelLine:{show:false},
+            emphasis:{label:{show:false}},
             data:[] 
         }]
     });
@@ -2874,6 +3829,7 @@
         });
         var pie_total = chartData.reduce(function(sum, item) { return sum + (item.value || 0); }, 0);
         update_pie_center(pie_total, chartData.length > 0);
+        v3SyncPieLegend(chartData);
         window.__kwPieOk = window.__kwPieOk || chartData.length > 0;
     }
     
@@ -3201,7 +4157,7 @@
                 interval: interval,
                 max: suggestedMax
             },
-            series:[{data:up},{data:down}] 
+            series:[{type:'line', name:_Upload, data:up},{type:'line', name:_Download, data:down}] 
         });
         
         updateWanRealtimeRate(curUp, curDown);
@@ -3429,7 +4385,7 @@
         if (source && source !== '--') {
             firstChar = String(source).trim().charAt(0).toUpperCase() || '?';
         }
-        return '<span class="dashboard-device-icon" style="background:' + deviceIconColor(mac || source) + ';">' + escapeHtml(firstChar) + '</span>';
+        return '<span class="user-traffic-avatar" style="--avatar-color:' + deviceIconColor(mac || source) + ';">' + escapeHtml(firstChar) + '</span>';
     }
 
     function normalizeMacKey(mac) {
@@ -3525,9 +4481,12 @@
             var hasDeviceAlias = !!((user.nickname && user.nickname.trim() !== '') || (user.hostname && user.hostname.trim() !== ''));
             var titleText = (hasDeviceAlias && mac) ? mac : ((name !== fullName && fullName) ? fullName : '');
             var titleAttr = titleText ? ' title="' + escapeHtml(titleText) + '"' : '';
-            var deviceHtml = '<div class="dashboard-device-info"' + titleAttr + '>' +
+            var deviceHtml = '<div class="client-device-cell"' + titleAttr + '>' +
                 buildDashboardDeviceIconHtml(name, mac) +
-                '<span class="dashboard-device-name">' + escapeHtml(name) + '</span>' +
+                '<div>' +
+                '<div class="client-device-name">' + escapeHtml(name) + '</div>' +
+                '<div class="client-device-mac">' + escapeHtml(mac || '--') + '</div>' +
+                '</div>' +
                 '</div>';
             
             return '<tr>' +
@@ -3618,8 +4577,8 @@
 
         var displayList = dashboard_media.matches ? appList : appList.slice(0, 10);
         displayList.forEach(function(app){
-            var $appItem = $('<div>').addClass('app-item');
-            var $iconWrap = $('<span>').addClass('app-icon-wrap')
+            var $appItem = $('<div>').addClass('app-tile-unit');
+            var $iconWrap = $('<span>').addClass('app-tile-ico')
                 .attr('title', app.name || 'app');
             var appId = (app && app.id !== undefined && app.id !== null) ? String(app.id).trim() : '';
             var appDisplayName = app.name || ('app' + app.id) || '?';
@@ -3657,9 +4616,9 @@
             } else {
                 showLetterIcon();
             }
-            var $nameSpan = $('<div>').addClass('app-name').text(app.name || ('app' + app.id));
+            var $nameSpan = $('<div>').addClass('app-tile-name').text(app.name || ('app' + app.id));
             // 最近活跃时间：空着一排图标时能看出"这个刚用过、那个两小时前"
-            var $timeSpan = $('<div>').addClass('app-time');
+            var $timeSpan = $('<div>').addClass('app-tile-sub');
             if (app.timestamp) {
                 var ago = Math.max(0, Math.floor(Date.now() / 1000 - Number(app.timestamp)));
                 if (ago < 60) {
@@ -3684,7 +4643,10 @@
             if(app.dst_port) tooltipHtml += '<div class="tooltip-row"><span class="tooltip-label">' + _DestinationPort + ':</span><span class="tooltip-value">'+app.dst_port+'</span></div>';
             if(app.domain) tooltipHtml += '<div class="tooltip-row"><span class="tooltip-label">' + _MatchedDomain + ':</span><span class="tooltip-value">'+app.domain+'</span></div>';
             $tooltip.html(tooltipHtml);
-            $appItem.append($iconWrap).append($nameSpan).append($timeSpan).append($tooltip);
+            $iconWrap.css('background', appLetterColor(app.name || ''));
+            var $appInfo = $('<div>').addClass('app-tile-info')
+                .append($nameSpan).append($timeSpan);
+            $appItem.append($iconWrap).append($appInfo).append($tooltip);
             $appItem.on('mouseenter', position_active_app_tooltip);
             $container.append($appItem);
         });
@@ -4072,8 +5034,8 @@
                     max: suggestedMax
                 },
                 series:[
-                    {data:up},
-                    {data:down}
+                    {type:'line', name:_Upload, data:up},
+                    {type:'line', name:_Download, data:down}
                 ],
                 animation: false,  
                 animationDurationUpdate: 0  
@@ -4112,6 +5074,12 @@
             return user && typeof user === 'object';
         }) : [];
         cacheUsersByMac(users);
+        var v3RankTotal = users.reduce(function (sum, user) {
+            var one = valid_bytes(user.total_bytes);
+            if (one === null) one = (valid_bytes(user.up_bytes) || 0) + (valid_bytes(user.down_bytes) || 0);
+            return sum + one;
+        }, 0);
+        v3Text('bar-total-badge', '总计 ' + formatTraffic(v3RankTotal));
         function valid_bytes(value) {
             if (typeof value !== 'number' && typeof value !== 'string') return null;
             if (typeof value === 'string' && !value.trim()) return null;
@@ -4218,6 +5186,278 @@
         if (dashboard_media.matches)
             update_chart_layout();
     }
+
+/* ==========================================================================
+   V3 展示层绑定
+   --------------------------------------------------------------------------
+   老脚本负责取数并渲染「活跃应用 / 访问流 / 终端表 / 流量排行 / 饼图」，
+   这五个容器在 V3 里换了外观但 id 未变，直接复用。
+   剩下几处 V3 新增的展示元素（WAN 卡、硬件进度条、网口摘要、图例、徽章）
+   老脚本不认识，由本文件在数据到达后补写。
+   本文件注入在老脚本同一作用域内，可直接调用 formatTraffic / formatPortSpeed。
+   ========================================================================== */
+
+    function v3Text(id, text, title) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = text;
+        if (title !== undefined) el.title = title;
+    }
+
+    function v3Bar(id, percent) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var w = Math.max(0, Math.min(100, Number(percent) || 0));
+        el.style.width = (w > 0 ? Math.max(w, 2) : 0) + '%';
+    }
+
+    function v3SyncWanCard(sys, net) {
+        var wan = (net && net.wan) || {};
+        var ip = wan.ip ? String(wan.ip) : '';
+        var online = !!ip && ip !== '0.0.0.0';
+        v3Text('wan-ip-display', online ? ip : '--', ip || '');
+
+        var desc = '';
+        if (online) {
+            desc = wan.gateway ? ('网关 ' + wan.gateway) : '已获取地址';
+            var dnsList = Array.isArray(wan.dns) ? wan.dns : String(wan.dns || '').split(',');
+            dnsList = dnsList.filter(function (item) { return String(item || '').trim(); });
+            if (dnsList.length) desc += ' · DNS ' + dnsList.join(' / ');
+        } else if (net && net.internet === 2) {
+            desc = '未检测到网线';
+        } else if (net && net.internet === 3) {
+            desc = '拨号失败，请检查账号';
+        } else if (net && net.internet === 1) {
+            desc = '未连接外网';
+        } else {
+            desc = '读取中';
+        }
+        v3Text('wan-desc', desc);
+
+        /* 状态徽章：断网时去掉呼吸点，避免用「在线」的语气说不好的消息 */
+        var badge = document.getElementById('wan-status-badge');
+        if (badge) {
+            var bad = net && net.internet !== undefined && net.internet !== 0;
+            badge.classList.toggle('live', !bad);
+            var dot = document.getElementById('wan-status-dot');
+            if (dot) dot.classList.toggle('gray', bad);
+        }
+
+        var flow = sys && sys.flow;
+        if (flow) {
+            var upKb = parseInt(flow.today_up, 10) || 0;
+            var downKb = parseInt(flow.today_down, 10) || 0;
+            v3Text('dash-down-total', formatTraffic(downKb * 1024));
+            v3Text('dash-up-total', formatTraffic(upKb * 1024));
+        } else {
+            v3Text('dash-down-total', '--');
+            v3Text('dash-up-total', '--');
+        }
+    }
+
+    function v3SyncVitals(sys) {
+        var cpu = parseFloat(sys && sys.cpu);
+        if (isFinite(cpu)) {
+            v3Bar('cpu-bar', cpu);
+            v3Text('cpu-pct', Math.round(cpu) + '%');
+        } else {
+            v3Bar('cpu-bar', 0);
+            v3Text('cpu-pct', '--');
+        }
+
+        var totalMem = parseInt(sys && sys.total_mem, 10);
+        var usedMem = parseInt(sys && sys.used_mem, 10);
+        if (totalMem > 0 && isFinite(usedMem)) {
+            var memPct = usedMem / totalMem * 100;
+            v3Bar('mem-bar', memPct);
+            v3Text('mem-pct', Math.round(memPct) + '%');
+        } else {
+            v3Bar('mem-bar', 0);
+            v3Text('mem-pct', '--');
+        }
+
+        /* 温度进度条按 100℃ 满格，超过 80℃ 转红，和「核心温度」的直觉一致 */
+        var temp = parseFloat(sys && sys.cpu_temp);
+        var tempBar = document.getElementById('cpu-temp-bar');
+        if (isFinite(temp) && temp > 0) {
+            v3Bar('cpu-temp-bar', temp);
+            if (tempBar) {
+                tempBar.style.background = temp >= 80 ? '#ef4444' : (temp >= 65 ? '#f59e0b' : '#10b981');
+            }
+            v3Text('cpu-temp-text', Math.round(temp) + '\u00B0C');
+        } else {
+            v3Bar('cpu-temp-bar', 0);
+            v3Text('cpu-temp-text', '--');
+        }
+
+        var model = String((sys && (sys.cpu_model_name || sys.model)) || '').trim();
+        v3Text('cpu-model-note', model || '--', model || '');
+
+        /* header 右上角徽章：优先固件版本，退而求其次显示架构 */
+        var chip = String((sys && sys.fwx_version) || '').trim();
+        var chipTitle = '';
+        if (chip) {
+            chipTitle = '固件 ' + chip;
+        } else if (sys && sys.arch) {
+            chip = String(sys.arch);
+            chipTitle = chip;
+        }
+        v3Text('dash-chip-badge', chip || '--', chipTitle);
+    }
+
+    function v3SyncPorts(ports) {
+        if (!Array.isArray(ports)) ports = [];
+        /* 接口数组里 WAN 口不一定排在最前（实测是 lan1/lan2/lan3/eth1），
+           砖块那边按 role 把 WAN 排到首位，摘要跟着排才不会出现「LAN2 / WAN 在线」 */
+        ports = ports.slice().sort(function (a, b) {
+            var ra = a && String(a.role || '').toLowerCase() === 'wan' ? 0 : 1;
+            var rb = b && String(b.role || '').toLowerCase() === 'wan' ? 0 : 1;
+            return ra - rb;
+        });
+        var upCount = 0;
+        var maxSpeed = 0;
+        var names = [];
+        ports.forEach(function (port) {
+            if (!port) return;
+            var up = parseInt(port.up, 10) === 1;
+            if (up) {
+                upCount++;
+                var sp = parseInt(port.speed, 10) || 0;
+                if (sp > maxSpeed) maxSpeed = sp;
+                /* 与网口砖块同一套取名规则：WAN 口的内核名是 eth1，直接显示会让人看不懂，
+                   砖块那边也是把 role=wan 一律显示成 wan，这里保持一致 */
+                var role = String(port.role || '').toLowerCase();
+                var nm = (role === 'wan' ? 'wan' : String(port.name || role || '')).toUpperCase();
+                if (nm) names.push(nm);
+            }
+        });
+
+        var badge = maxSpeed >= 1000 ? '千兆接入' : (maxSpeed > 0 ? '百兆接入' : '全部断开');
+        v3Text('port-speed-badge', badge);
+        v3Text('port-summary', names.length ? (names.join(' / ') + ' 在线') : '当前无端口连接');
+        v3Text('port-count-note', 'RJ45 ' + ports.length + ' 接口 · ' + upCount + ' 口在线');
+    }
+
+    /* 入口：由 updateDashboardData 在末尾调用 */
+    function v3SyncDashboard(data) {
+        if (!data) return;
+        try {
+            var sys = data.system_status || {};
+            var net = data.network_status || {};
+            v3SyncWanCard(sys, net);
+            v3SyncVitals(sys);
+            v3SyncPorts(net.port_status);
+        } catch (e) {
+            /* 展示层不能影响主流程 */
+            if (window.console && console.warn) console.warn('v3 sync failed', e);
+        }
+    }
+
+    /* 饼图右侧图例：ECharts 自带 legend 在 V3 里关掉了，改由 DOM 排布 */
+    function v3SyncPieLegend(chartData) {
+        var box = document.getElementById('pie-legend');
+        if (!box) return;
+        box.innerHTML = '';
+        if (!chartData || !chartData.length) return;
+        var total = chartData.reduce(function (sum, item) { return sum + (Number(item.value) || 0); }, 0);
+        chartData.forEach(function (item, index) {
+            var percent = total > 0 ? (Number(item.value) || 0) / total * 100 : 0;
+            var row = document.createElement('div');
+            row.className = 'pie-side-item';
+
+            var label = document.createElement('span');
+            label.className = 'pie-side-label';
+            var dot = document.createElement('span');
+            dot.className = 'pie-side-dot';
+            dot.style.background = (pieAppColor && pieAppColor(index)) || '#94a3b8';
+            label.appendChild(dot);
+            label.appendChild(document.createTextNode(item.name || '--'));
+
+            var val = document.createElement('span');
+            val.className = 'pie-side-val';
+            val.textContent = percent.toFixed(1) + '%';
+
+            row.appendChild(label);
+            row.appendChild(val);
+            box.appendChild(row);
+        });
+    }
+
+    /* 取调色板颜色：与饼图同一套色，避免图例和圆环对不上 */
+    function pieAppColor(index) {
+        var palette = (typeof pieApp !== 'undefined' && pieApp) ? pieApp.getOption().color : null;
+        if (palette && palette.length) return palette[index % palette.length];
+        return ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'][index % 5];
+    }
+
+    /* ==========================================================================
+       终端表筛选：按「当前有没有在收发数据」分档
+       --------------------------------------------------------------------------
+       老页面的筛选项是「有线 / 5G / 2.4G」，但 dashboard_api 不下发链路类型，
+       做不出来。这里换成能从速率字段真实推断的分法，并且不给按钮写死数量。
+       ========================================================================== */
+    function initClientFilter() {
+        var box = document.getElementById('client-filter-capsules');
+        var body = document.getElementById('client-body');
+        if (!box || !body) return;
+
+        var mode = 'all';
+
+        function rowsInfo() {
+            var users = (typeof activeUsersData !== 'undefined' && activeUsersData) || [];
+            var rows = body.querySelectorAll('tr');
+            var info = { all: rows.length, active: 0, idle: 0 };
+            for (var i = 0; i < rows.length; i++) {
+                var user = users[i];
+                var busy = user ? ((Number(user.up_rate) || 0) + (Number(user.down_rate) || 0)) > 0 : false;
+                rows[i].setAttribute('data-busy', busy ? '1' : '0');
+                if (busy) info.active++; else info.idle++;
+            }
+            return info;
+        }
+
+        function paintCounts() {
+            var info = rowsInfo();
+            var labels = { all: '全部', active: '在用中', idle: '空闲' };
+            var buttons = box.querySelectorAll('.client-filter-btn');
+            for (var i = 0; i < buttons.length; i++) {
+                var key = buttons[i].getAttribute('data-filter');
+                buttons[i].textContent = labels[key] + ' (' + (info[key] || 0) + ')';
+                buttons[i].classList.toggle('active', key === mode);
+            }
+        }
+
+        function apply() {
+            var rows = body.querySelectorAll('tr');
+            for (var i = 0; i < rows.length; i++) {
+                var busy = rows[i].getAttribute('data-busy') === '1';
+                var show = mode === 'all' || (mode === 'active' ? busy : !busy);
+                rows[i].style.display = show ? '' : 'none';
+            }
+            paintCounts();
+        }
+
+        function refresh() {
+            paintCounts();
+            apply();
+        }
+
+        box.addEventListener('click', function (event) {
+            var btn = event.target.closest ? event.target.closest('.client-filter-btn') : null;
+            if (!btn) return;
+            mode = btn.getAttribute('data-filter') || 'all';
+            apply();
+        });
+
+        /* 表格每 3 秒重绘一次，重绘后把筛选状态补回去 */
+        if (window.MutationObserver) {
+            new MutationObserver(refresh).observe(body, { childList: true });
+        }
+        refresh();
+    }
+
+    /* 绑定层在这里直接跑一次：脚本位于 body 末尾，此时终端表容器已就绪 */
+    initClientFilter();
 
     init_dashboard_chart_layout();
 

@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-kidwatch
-PKG_VERSION:=1.2.1
+PKG_VERSION:=1.3.0
 PKG_RELEASE:=1
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=52sanmao <52sanmao@users.noreply.github.com>
@@ -24,10 +24,14 @@ define Package/luci-app-kidwatch/description
   late-night usage guard and CPU/temperature history.
 
   Also ships a rebuilt copy of the firmware's own dashboard page (same data,
-  same IDs): right-side cards merged into one device card, the five KPI
-  tiles moved to a compact sidebar, chart empty states, and a fix for the
-  memory ring showing 0 MB. The stock file is backed up before the swap and
-  restored on uninstall.
+  same IDs) with a cockpit-style layout: WAN status, router vitals and port
+  LEDs on the top deck; live traffic plus active apps / visiting URLs in the
+  middle; category pie and per-device traffic ranking below; and a filterable
+  client table at the bottom. Fully responsive down to phone width using
+  plain CSS -- the stock page carried a hard min-width:800px that scrolled
+  the whole page sideways. Also chart empty states, pie labels moved out of
+  the plot into a DOM legend, and a fix for the memory ring showing 0 MB.
+  The stock file is backed up before the swap and restored on uninstall.
 
   And a patched device-list page: the Signal / Session columns are hidden by
   a single table-level class shared by <th> and <td> (they used to be toggled
