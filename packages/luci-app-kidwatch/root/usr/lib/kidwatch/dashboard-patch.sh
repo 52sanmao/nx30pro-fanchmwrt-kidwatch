@@ -14,8 +14,16 @@ apply_one() {
 	src="$1"; bak="$2"; dst="$3"
 	[ -f "$src" ] || return 0
 	[ -f "$dst" ] || return 0
-	# 首次套用前把固件原版存一份，之后不再覆盖（避免把我们的版本存成"原版"）
-	[ -f "$bak" ] || cp "$dst" "$bak" 2>/dev/null
+	if [ ! -f "$bak" ]; then
+		# 首次套用：当前位置就是固件原版
+		cp "$dst" "$bak" 2>/dev/null
+	elif ! cmp -s "$src" "$dst" && ! cmp -s "$bak" "$dst"; then
+		# dst 既不是我们的版本、也和旧备份不一样 —— 说明刷了新固件，
+		# 这个页面已经被固件换成新版了。旧备份此时是上一代固件的页面，
+		# 拿它 restore 会把旧页面倒灌回新固件（语法/接口都可能对不上），
+		# 所以用当前这份重新存。
+		cp "$dst" "$bak" 2>/dev/null
+	fi
 	cmp -s "$src" "$dst" && return 0
 	cp "$src" "$dst" || return 1
 	CHANGED=1

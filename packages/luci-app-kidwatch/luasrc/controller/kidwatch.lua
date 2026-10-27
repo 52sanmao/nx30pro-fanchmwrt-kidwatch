@@ -1,10 +1,15 @@
 module("luci.controller.kidwatch", package.seeall)
 
+-- 把参数包成 shell 单引号字面量。
+-- 两条老隐患：① 没滤换行——sh -c 会把 \n 当命令分隔符，别名里带个换行
+-- 就能截断命令；② 超过 200 字直接 return nil，而调用处是 cmd .. q(val)，
+-- 会抛 attempt to concatenate a nil value，给设备起个长别名就 500。
+-- 现在统一成"去掉控制字符 + 截断"，永远返回字符串。
 local function q(s)
-	if s == nil then return nil end
-	s = tostring(s)
-	if #s > 200 then return nil end
-	if s:match("'") then s = s:gsub("'", "") end
+	s = tostring(s or "")
+	s = s:gsub("%c", "")        -- 换行/回车/Tab 等控制字符一律去掉
+	s = s:gsub("'", "")         -- 单引号会提前闭合字面量
+	if #s > 200 then s = s:sub(1, 200) end
 	return "'" .. s .. "'"
 end
 
@@ -96,7 +101,9 @@ end
 -- 应用视角：直接用固件 visit_list 里"今天每个应用用了多久"的累计值。
 -- 这是仪表板"活跃网址"背后的同一份数据，DPI 识别到应用名和 appid，
 -- 类目用固件的 class_list，不需要域名库，也不用自己按连接去猜。
--- 名字要跟固件 class_list 里实际出现的分类一一对上，漏一个就有整类应用掉进"工具"
+-- 名字要跟固件 class_list 里实际出现的分类一一对上，漏一个就有整类应用掉进"工具"。
+-- 这张表必须与 kidwatch/files/poll.lua 里的 CATMAP 保持一致，
+-- 否则采集层写进 sess 的类和前端这里的归类会对不上。
 local CATMAP = {
 	["聊天"] = "social", ["社交"] = "social",
 	["游戏"] = "game", ["视频"] = "video", ["音乐"] = "music",

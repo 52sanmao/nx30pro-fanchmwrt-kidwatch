@@ -27,13 +27,19 @@ local DAY = os.time({
   hour = 0, min = 0, sec = 0,
 })
 
--- 固件 class_list 的中文类目 -> 本地 cat 代码
+-- 固件 class_list 的中文类目 -> 本地 cat 代码。
+-- 这张表和 luci-app-kidwatch 的 controller 里那张必须一一对应：
+-- 采集层写进 sess 的 cat 与前端"应用视角"的分类一旦对不上，
+-- 时段分布图的配色就会和列表打架。改这里记得同步改那边
+-- （controller 里还多一张 NAMECAT，按应用名纠固件的误分类）。
 local CATMAP = {
-  ["游戏"] = "game", ["社交"] = "social", ["视频"] = "video",
-  ["音乐"] = "music", ["购物"] = "shop", ["学习"] = "study",
-  ["小说"] = "novel", ["阅读"] = "novel", ["新闻"] = "news",
-  ["资讯"] = "news", ["工具"] = "tool", ["办公"] = "tool",
-  ["金融"] = "tool", ["旅游"] = "tool", ["生活"] = "tool",
+  ["聊天"] = "social", ["社交"] = "social",
+  ["游戏"] = "game", ["视频"] = "video", ["音乐"] = "music",
+  ["购物"] = "shop", ["教育"] = "study", ["学习"] = "study",
+  ["小说"] = "novel", ["阅读"] = "novel",
+  ["新闻"] = "news", ["资讯"] = "news", ["常用网站"] = "news",
+  ["工具"] = "tool", ["办公"] = "tool",
+  ["招聘"] = "tool", ["金融"] = "tool", ["旅游"] = "tool", ["生活"] = "tool",
 }
 
 -- ---------------------------------------------------------------- 系统指标

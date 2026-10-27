@@ -321,7 +321,10 @@
 
 /* ---------- 设备排行 ---------- */
 #kw .kw-devrow{display:grid;grid-template-columns:1fr auto;gap:3px 8px;padding:8px 0;
-  border-top:1px solid var(--kw-border)}
+  border-top:1px solid var(--kw-border);cursor:pointer;border-radius:6px;
+  transition:background .12s}
+#kw .kw-devrow:hover,#kw .kw-devrow:focus-visible{background:var(--kw-soft)}
+#kw .kw-devrow:focus-visible{outline:2px solid var(--kw-accent);outline-offset:1px}
 #kw .kw-devrow:first-child{border-top:0;padding-top:2px}
 #kw .kw-devrow .nm{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #kw .kw-devrow .vv{font-size:12px;color:var(--kw-dim);font-variant-numeric:tabular-nums}
@@ -760,6 +763,7 @@
 //<![CDATA[
 (function(){
   var API = "<%=url('admin/kidwatch_api/call')%>";
+  var WEBURL = "<%=url('admin/fwx_guard/web')%>";
   var CATC = {video:'#D85A30',game:'#7F77DD',social:'#378ADD',study:'#1D9E75',shop:'#E8A33D',
               music:'#C05BA8',novel:'#E2607E',news:'#5F6B7A',tool:'#B4B2A9',other:'#8A8F98',
               cdn:'#7C8794'};
@@ -1001,8 +1005,10 @@
         if (seen[nm] > 1 && x.mac) nm += ' · ' + String(x.mac).slice(-2);
         var pc = (x.dur||0)/mx*100;
         var col = x.role === 'child' ? '#378ADD' : (x.role === 'iot' ? '#B4B2A9' : '#7F77DD');
-        h += '<div class="kw-devrow">'
-           +   '<div class="nm" title="'+esc(x.mac)+'">'+esc(nm)+'</div>'
+        h += '<div class="kw-devrow" data-mac="'+esc(x.mac)+'" role="button" tabindex="0"'
+           +   ' aria-label="查看 '+esc(nm)+' 的上网详单"'
+           +   ' title="'+esc(x.mac)+' · 点击查看这台设备的上网详单">'
+           +   '<div class="nm">'+esc(nm)+'</div>'
            +   '<div class="vv num">'+fmtDur(x.dur)+'</div>'
            +   '<div class="bar"><i style="width:'+pc.toFixed(1)+'%;background:'+col+'"></i></div>'
            + '</div>';
@@ -1010,8 +1016,10 @@
       $('#ov-devs').html(h);
     });
 
-    // 标题写的是"不含 CDN/基础服务"，后端 top 不做这个过滤，这里按类目剔掉后取前 8
-    api({fn:'top', range:S.range, mac:S.mac, met:'dur', lim:16}, function(e, d){
+    // 后端 q_top 在没带 --cat 时已经加了 AND COALESCE(s.cat,'other')<>'cdn'，
+    // 所以这里不必多要一倍再由前端截断；filter 只作兜底（将来若带上 cat 参数，
+    // 后端就不再过滤 CDN，届时这句仍然有效）。
+    api({fn:'top', range:S.range, mac:S.mac, met:'dur', lim:8}, function(e, d){
       var rows = (d || []).filter(function(x){ return x.cat !== 'cdn'; }).slice(0, 8);
       if (!rows.length){ $('#ov-top').html('<tbody><tr><td class="kw-empty">暂无记录</td></tr></tbody>'); return; }
       var max = Math.max.apply(null, rows.map(function(x){ return x.dur||0; }).concat([1]));
@@ -1027,6 +1035,26 @@
     });
   }
 
+  // 设备排行标题写着"点一台看明细"，但行上原来既没有 data-mac 也没有任何事件，
+  // 点了完全没反应。设备选择和详单页共用 localStorage 的 kw.mac，
+  // 所以这里只写进去再跳转，详单页启动时自己就会按这台过滤。
+  function openDevDetail(mac){
+    mac = String(mac || '');
+    if (!mac) return;
+    try { localStorage.setItem('kw.mac', mac); } catch(e){}
+    location.href = WEBURL;
+  }
+  $('#ov-devs')
+    .on('click', '.kw-devrow', function(){
+      openDevDetail($(this).attr('data-mac'));
+    })
+    .on('keydown', '.kw-devrow', function(e){
+      if (e.key === 'Enter' || e.key === ' ' || e.keyCode === 13 || e.keyCode === 32){
+        e.preventDefault();
+        openDevDetail($(this).attr('data-mac'));
+      }
+    });
+
   var hoursChart = null;
   function drawHours(){
     var el = document.getElementById('ov-hours');
@@ -1037,7 +1065,12 @@
       el.innerHTML = '<div class="kw-empty">30 天视图不显示时段分布<br><span style="font-size:12px">（明细只保留 14 天，选 7 天以内可看）</span></div>';
       return;
     }
-    if (!hoursChart) hoursChart = echarts.init(el, null, {renderer:'svg'});
+    if (!hoursChart){
+      // 30 天视图和"没有记录"都会往容器里写提示文字，切回来时要先清掉，
+      // 否则那句提示会一直压在图上面。
+      el.innerHTML = '';
+      hoursChart = echarts.init(el, null, {renderer:'svg'});
+    }
     var rows = S.hours || [];
     var cats = {};
     var data = [];
@@ -1061,8 +1094,8 @@
     });
     var lbl = []; for (var k=0;k<24;k++) lbl.push(k+':00');
     if (!series.length){
-      el.innerHTML = '<div class="kw-empty">这段时间还没有记录</div>';
       if (hoursChart) { hoursChart.dispose(); hoursChart = null; }
+      el.innerHTML = '<div class="kw-empty">这段时间还没有记录</div>';
       return;
     }
     hoursChart.setOption({
@@ -1962,12 +1995,23 @@
   function sysSpark(id, vals, color){
     var el = document.getElementById(id);
     if (!el) return;
-    var c = echarts.getInstanceByDom(el);
-    if (!c) c = echarts.init(el, null, {renderer:'svg'});
+    // 空态不能只 clear + innerHTML：那会把 zrender 的根容器从 DOM 里摘掉，
+    // 而实例还挂在 el 上，之后所有 setOption 都画在一个脱离文档的节点里 ——
+    // 只要出现过一次"暂无采样"，这个图就再也画不出线了（实测 svg 元素数为 0）。
     if (!vals.length || vals.every(function(v){ return v == null; })){
-      c.clear();
-      el.innerHTML = '<div class="kw-empty" style="padding:18px 0;font-size:12px">暂无采样</div>';
+      var old = echarts.getInstanceByDom(el);
+      if (old) old.dispose();
+      if (!el.querySelector('.kw-empty')){
+        el.innerHTML = '<div class="kw-empty" style="padding:18px 0;font-size:12px">暂无采样</div>';
+      }
       return;
+    }
+    var c = echarts.getInstanceByDom(el);
+    if (!c){
+      // 走到这里说明上一次是空态（或首次）：先清掉占位文案再建实例，
+      // 否则那句"暂无采样"会一直压在图上。
+      el.innerHTML = '';
+      c = echarts.init(el, null, {renderer:'svg'});
     }
     c.setOption({
       animation:false, backgroundColor:'transparent',
@@ -2013,7 +2057,12 @@
       el.innerHTML = '<div class="kw-empty">还没有采样数据（每分钟一个点）</div>';
       return;
     }
-    if (!detailChart) detailChart = echarts.init(el, null, {renderer:'svg'});
+    if (!detailChart){
+      // 有数据回来时要先把上一次的空态文案清掉，否则那句
+      // "还没有采样数据" 会一直压在曲线图中间。
+      el.innerHTML = '';
+      detailChart = echarts.init(el, null, {renderer:'svg'});
+    }
     var xs = rows.map(function(r){ return hhmm(r.ts); });
     var f = function(k){ return rows.map(function(r){ return r[k] ? +r[k] : null; }); };
     var step = Math.max(0, Math.ceil(xs.length/8)-1);
@@ -2158,6 +2207,13 @@
   });
   $(window).on('resize', function(){
     [hoursChart, detailChart].forEach(function(c){ if (c) c.resize(); });
+    // 三个系统小图没挂在变量上，按容器取实例补一次 resize，
+    // 否则拖窗口之后要等下一轮 loadSys 才会贴合（15 秒以上）。
+    ['sys-cpu', 'sys-temp', 'sys-mem'].forEach(function(id){
+      var el = document.getElementById(id);
+      var c = el && echarts.getInstanceByDom(el);
+      if (c) c.resize();
+    });
     tipHide();
   });
 

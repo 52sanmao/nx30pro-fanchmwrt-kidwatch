@@ -123,6 +123,7 @@ do_watch() {
 	IV="${KWIV:-180}"
 	step=$((IV / 60)); [ "$step" -lt 1 ] && step=1
 	n=0
+	next_maint=0
 	while :; do
 		# dnsmasq 的查询日志是 O_APPEND 打开的，除非有人动它否则一直涨。
 		# /tmp 是 116MB 的 tmpfs，实测 24 小时涨 114MB —— 涨满之后 LuCI 的
@@ -133,6 +134,27 @@ do_watch() {
 		KWDB="$DB" lua /usr/lib/kidwatch/poll.lua --sys
 		n=$((n + 1))
 		[ $((n % step)) -eq 0 ] && do_poll
+
+		# 每日维护。原先只有 collect.awk 会调 do_maint，而 collect 已经默认
+		# 不再定时跑 —— 于是 sysm/sess/win 只增不减，实测约 340KB/天，
+		# 38MB 的 overlay 撑不到 3 个月就会被写满。
+		# 时间点记在 meta 表里而不是用循环计数：计数器每次重启都归零，
+		# 路由器一周重启一次就永远等不到满 1440 轮。
+		if [ "$next_maint" = 0 ]; then
+			l=$(se "SELECT COALESCE((SELECT CAST(v AS INTEGER) FROM meta WHERE k='maint'),0);" 2>/dev/null | tr -dc '0-9')
+			[ -z "$l" ] && l=0
+			if [ "$l" -gt 0 ]; then
+				next_maint=$(( l + ${KWMAINT:-86400} ))
+			else
+				# 从没维护过：开机 5 分钟后补一次，先把历史垃圾收掉
+				next_maint=$(( $(now) + 300 ))
+			fi
+		fi
+		if [ "$(now)" -ge "$next_maint" ]; then
+			do_maint
+			se "INSERT OR REPLACE INTO meta(k,v) VALUES('maint','$(now)');" >/dev/null 2>&1
+			next_maint=$(( $(now) + ${KWMAINT:-86400} ))
+		fi
 		sleep 60
 	done
 }
@@ -406,7 +428,9 @@ do_maint() {
 	  FROM sysm WHERE ts < $(( $(now) - 2*86400 )) GROUP BY ts/3600;
 	DELETE FROM sysm WHERE ts < $(( $(now) - 7*86400 ));
 	DELETE FROM sysh WHERE ts < $(( $(now) - 90*86400 ));
-	PRAGMA wal_checkpoint(TRUNCATE);"
+	PRAGMA wal_checkpoint(TRUNCATE);" >/dev/null
+	# 上面那句的 stdout 是 wal_checkpoint 的返回值（0|0|N），
+	# 不重定向会被 procd 收进 syslog，看着像报错。
 	sz=$(wc -c < "$DB")
 	[ "$sz" -gt 25165824 ] && se "VACUUM;"
 	do_sethost

@@ -3635,40 +3635,11 @@
     setBar('storage-overlay-bar','',0);
     
     var dashboard_media = window.matchMedia('(max-width: 768px)');
-    var latest_active_apps = null;
 
-    function init_dashboard_mobile() {
-        var mobile_container = document.getElementById('dashboard-mobile');
-        var card_ids = [
-            'sys-info-card', 'running-status-card', 'active-app-card',
-            'traffic-card', 'active-url-card', 'network-card',
-            'port-status-card', 'env-storage-card', 'pie-app-card',
-            'bar-user-traffic-card', 'active-clients-card'
-        ];
-        var cards = card_ids.map(function(id) {
-            var card = document.getElementById(id);
-            var marker = document.createComment(id);
-            card.parentNode.insertBefore(marker, card);
-            return { card: card, marker: marker };
-        });
-        function update_layout() {
-            cards.forEach(function(item) {
-                if (dashboard_media.matches)
-                    mobile_container.appendChild(item.card);
-                else
-                    item.marker.parentNode.insertBefore(item.card, item.marker.nextSibling);
-            });
-            $('#active-url-list .active-url-url').each(function() {
-                fit_active_url(this);
-            });
-            if (latest_active_apps)
-                updateActiveApps(latest_active_apps);
-        }
-        dashboard_media.addEventListener('change', update_layout);
-        update_layout();
-    }
-
-    /* V3 由 CSS 媒体查询接管布局，卡片不再由 JS 搬进 #dashboard-mobile */
+    /* 这里原来是 init_dashboard_mobile()：768px 以下把 11 张卡片逐个搬进
+       #dashboard-mobile 再搬回来。V3 改用纯 CSS 媒体查询之后它已经没人调用，
+       留着函数本身是隐患 —— 谁要是恢复调用，卡片会被搬进那个 display:none
+       的容器里直接消失。整段删除，连同只为它服务的 latest_active_apps。 */
 
     function fit_active_urls() {
         $('#active-url-list .active-url-url').each(function() { fit_active_url(this); });
@@ -4549,7 +4520,6 @@
             appList = [];
         }
         
-        latest_active_apps = appList;
         var scroll_left = $container.scrollLeft();
         $container.empty();
         
