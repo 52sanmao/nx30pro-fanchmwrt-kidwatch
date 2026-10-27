@@ -1053,6 +1053,9 @@
       ds.slice(0,7).forEach(function(x){
         var nm = x.alias || x.nick || x.name || x.host || x.mac;
         if (seen[nm] > 1 && x.mac) nm += ' · ' + String(x.mac).slice(-2);
+        // 还是没有名字的设备（MAC 顶上）：缩成"未命名 · 05"，全名在 title 里。
+        // 之前这里漏了这一步，一段 MAC 把标签列撑爆，跟 night 那边的规矩不一致。
+        else if (/^([0-9a-f]{2}[:-]){5}/i.test(nm)) nm = '未命名 · ' + nm.slice(-2);
         var pc = (x.dur||0)/mx*100;
         var col = x.role === 'child' ? '#378ADD' : (x.role === 'iot' ? '#B4B2A9' : '#7F77DD');
         h += '<div class="kw-devrow" data-mac="'+esc(x.mac)+'" role="button" tabindex="0"'
