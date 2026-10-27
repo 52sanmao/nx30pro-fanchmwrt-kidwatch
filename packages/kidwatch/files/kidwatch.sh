@@ -79,6 +79,16 @@ CREATE TABLE IF NOT EXISTS daily(
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS i_daily_dom ON daily(dom, day);
 
+-- 每设备每日的真实字节数（固件 get_daily_top_users，当天累计值，每轮覆盖）。
+-- 为什么要单独一张表：固件只到"设备"这一层，没有站点级字节；按域名看流量时
+-- 用这张表的当日总量按各域名占用时长分摊（q_list），总量恒等于固件口径，
+-- 不会出现"各站点加起来比设备总量还多"这种自相矛盾。
+CREATE TABLE IF NOT EXISTS devday(
+  day INTEGER NOT NULL, mac TEXT NOT NULL,
+  up INTEGER NOT NULL DEFAULT 0, dn INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY(day, mac)
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS win(
   ts INTEGER NOT NULL, mac TEXT NOT NULL,
   air INTEGER NOT NULL DEFAULT 0, on_s INTEGER NOT NULL DEFAULT 0,
@@ -279,16 +289,29 @@ q_days() {
 q_list() {
 	R=$(cond); O=$(metric_sql "${MET:-dur}"); L=${LIM:-50}; P=${OFF:-0}
 	TOT=$(sj "SELECT COUNT(*) AS c FROM (SELECT d.day,d.mac,d.dom FROM daily d LEFT JOIN site s ON s.dom=d.dom WHERE $R GROUP BY d.day,d.mac,d.dom);" | sed -n 's/.*"c":\([0-9]*\).*/\1/p')
+	# 站点级字节：固件只给到"设备当日总量"，这里按各域名占用时长把总量摊下去。
+	# 分摊后同一设备各域名加起来 == 这台设备的真实当日流量（不会凭空多出来），
+	# 前端的数字一律带"≈"，别当成实测值。td 是这台设备当天的时长合计。
 	ROWS=$(sj "
+	WITH td AS (
+	  SELECT d.day AS day, d.mac AS mac, SUM(d.dur) AS td
+	  FROM daily d LEFT JOIN site s ON s.dom=d.dom
+	  WHERE $R GROUP BY d.day, d.mac)
 	SELECT d.day AS day, d.mac AS mac,
 	       COALESCE(NULLIF(dv.alias,''),NULLIF(dv.nick,''),NULLIF(dv.host,''),d.mac) AS who,
 	       d.dom AS dom,
 	       COALESCE(s.name,'') AS name,
 	       COALESCE(s.cat,'other') AS cat,
-	       SUM(d.dur) AS dur, SUM(d.up+d.dn) AS by, SUM(d.n) AS n
+	       SUM(d.dur) AS dur,
+	       CAST(COALESCE(SUM(CASE WHEN td.td > 0
+	              THEN (COALESCE(dd.up,0)+COALESCE(dd.dn,0)) * d.dur * 1.0 / td.td
+	              ELSE d.up + d.dn END),0) AS INTEGER) AS by,
+	       SUM(d.n) AS n
 	FROM daily d
-	LEFT JOIN site s ON s.dom=d.dom
-	LEFT JOIN dev  dv ON dv.mac=d.mac
+	LEFT JOIN site s   ON s.dom=d.dom
+	LEFT JOIN dev  dv  ON dv.mac=d.mac
+	LEFT JOIN devday dd ON dd.day=d.day AND dd.mac=d.mac
+	LEFT JOIN td       ON td.day=d.day AND td.mac=d.mac
 	WHERE $R GROUP BY d.day, d.mac, d.dom
 	ORDER BY $O DESC, dur DESC LIMIT $L OFFSET $P;")
 	[ -z "$ROWS" ] && ROWS="[]"
@@ -414,7 +437,11 @@ do_setdev() {
 		alias) se "INSERT INTO dev(mac,alias) VALUES('$MAC','$V') ON CONFLICT(mac) DO UPDATE SET alias='$V';" ;;
 		role)  se "INSERT INTO dev(mac,role)  VALUES('$MAC','$V') ON CONFLICT(mac) DO UPDATE SET role='$V';" ;;
 		mode)  se "INSERT INTO dev(mac,mode)  VALUES('$MAC','$V') ON CONFLICT(mac) DO UPDATE SET mode='$V';" ;;
-		del)   se "DELETE FROM dev WHERE mac='$MAC'; DELETE FROM sess WHERE mac='$MAC'; DELETE FROM daily WHERE mac='$MAC'; DELETE FROM win WHERE mac='$MAC';" ;;
+		# 删除这台设备的全部痕迹。devlive 也要删，否则"设备清单以固件为准"
+		# 那一支会立刻把它从 devlive 重新拼出来，看着像没删掉。
+		del)   se "DELETE FROM dev WHERE mac='$MAC'; DELETE FROM devlive WHERE mac='$MAC';
+		           DELETE FROM sess WHERE mac='$MAC'; DELETE FROM daily WHERE mac='$MAC';
+		           DELETE FROM win WHERE mac='$MAC'; DELETE FROM devday WHERE mac='$MAC';" ;;
 		*) return ;;
 	esac
 	echo '{"ok":true}'
@@ -449,6 +476,7 @@ do_maint() {
 	se "
 	DELETE FROM sess WHERE day < $((D - 14*86400));
 	DELETE FROM daily WHERE day < $((D - 400*86400));
+	DELETE FROM devday WHERE day < $((D - 400*86400));
 	DELETE FROM win  WHERE ts  < $(( $(now) - 21*86400 ));
 	INSERT OR REPLACE INTO sysh(ts,cpu,load,mem,tc,w24,w5)
 	  SELECT (ts/3600)*3600, AVG(cpu), AVG(load), AVG(mem), MAX(tc), MAX(w24), MAX(w5)

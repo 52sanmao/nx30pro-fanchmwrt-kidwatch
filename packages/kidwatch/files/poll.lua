@@ -228,10 +228,55 @@ local CDN_KEY = {
   "aliyun", "kunlun", "bdstatic", "gstatic", "static", "doubleclick",
   "googlesyndication", "miaozhen", "umeng", "sentry",
 }
+
+-- 站点库里没有的品牌域名，按域名里的品牌词判类。
+-- 这张表是"特征库"的兜底：实测有大量二级域名（pddpic.com、biliimg.com、
+-- bytegecko.com 之类）永远进不了人工维护的 sites.tsv，靠关键词能一次判对。
+-- 只放辨识度足够高的词，宁可漏判成"未分类"，也别把 CDN 误判成视频。
+-- 顺序有意义：先命中先返回，所以更具体的词要排在前面。
+local KEYCAT = {
+  -- 视频/直播
+  { "douyin", "video" }, { "kuaishou", "video" }, { "ixigua", "video" },
+  { "bilibili", "video" }, { "biliimg", "video" }, { "hdslb", "video" },
+  { "iqiyi", "video" }, { "youku", "video" }, { "mgtv", "video" },
+  { "wetv", "video" }, { "tiktok", "video" }, { "youtube", "video" },
+  { "netflix", "video" }, { "qqvideo", "video" }, { "bilivideo", "video" },
+  -- 游戏
+  { "steam", "game" }, { "epicgames", "game" }, { "riotgames", "game" },
+  { "blizzard", "game" }, { "minecraft", "game" }, { "garena", "game" },
+  { "4399", "game" }, { "7k7k", "game" }, { "taptap", "game" },
+  -- 社交
+  { "weibo", "social" }, { "zhihu", "social" }, { "xiaohongshu", "social" },
+  { "douban", "social" }, { "weixin", "social" }, { "wechat", "social" },
+  { "instagram", "social" }, { "facebook", "social" }, { "twitter", "social" },
+  -- 购物
+  { "taobao", "shop" }, { "tmall", "shop" }, { "pinduoduo", "shop" },
+  { "yangkeduo", "shop" }, { "suning", "shop" }, { "jd.com", "shop" },
+  { "amazon", "shop" }, { "pddpic", "shop" },
+  -- 学习
+  { "xueersi", "study" }, { "zuoyebang", "study" }, { "yuanfudao", "study" },
+  { "17zuoye", "study" }, { "chaoxing", "study" }, { "icourse163", "study" },
+  { "zhihuishu", "study" }, { "khanacademy", "study" }, { "duolingo", "study" },
+  -- 音乐
+  { "kugou", "music" }, { "kuwo", "music" }, { "migu", "music" },
+  { "ximalaya", "music" }, { "qishui", "music" }, { "spotify", "music" },
+  -- 资讯
+  { "sina", "news" }, { "sohu", "news" }, { "ifeng", "news" },
+  { "thepaper", "news" }, { "cctv", "news" }, { "people.com", "news" },
+  { "toutiao", "news" }, { "36kr", "news" },
+  -- 工具/云/AI
+  { "openai", "tool" }, { "deepseek", "tool" }, { "anthropic", "tool" },
+  { "github", "tool" }, { "bing.com", "tool" }, { "office", "tool" },
+  { "wps", "tool" }, { "qianwen", "tool" },
+}
+
 local function guess_cat(host)
   local h = host:lower()
   for _, k in ipairs(CDN_KEY) do
     if h:find(k, 1, true) then return "cdn" end
+  end
+  for _, p in ipairs(KEYCAT) do
+    if h:find(p[1], 1, true) then return p[2] end
   end
   return nil
 end
@@ -405,14 +450,30 @@ end
 local USED = win_state()
 local AIR, CONN = read_stations()
 
-local bu = {}
+-- 每设备当日累计字节（含上下行拆分）。既用于 win 的差分，也原样落进 devday：
+-- 站点级流量固件没有，只能拿这个总量在查询时按域名时长分摊。
+local bu, bu_up, bu_dn = {}, {}, {}
 do
   local du = ubus("get_daily_top_users") or {}
   for _, u in ipairs(du.users or {}) do
     local m = esc(u.mac)
     if m ~= "" then
-      bu[m] = (tonumber(u.up_bytes) or 0) + (tonumber(u.down_bytes) or 0)
+      -- 必须 floor：JSON 里的大整数在 Lua 里可能是浮点，string.format("%d")
+      -- 遇到"没有整数表示"的浮点会直接抛错（整轮采样作废）。
+      local uu = math.floor(tonumber(u.up_bytes) or 0)
+      local dd = math.floor(tonumber(u.down_bytes) or 0)
+      bu_up[m], bu_dn[m] = uu, dd
+      bu[m] = uu + dd
     end
+  end
+  for m in pairs(bu) do
+    -- 这里必须用 %.0f 而不是 %d：本机 Lua 是 5.1（double），string.format("%d")
+    -- 只认 C 的 int，字节数一旦超过 2^31 就抛 "integer expected, got number"，
+    -- 整轮采样直接崩掉（踩过一次，别改回去）。
+    sql[#sql + 1] = string.format(
+      "INSERT INTO devday(day,mac,up,dn) VALUES(%d,'%s',%.0f,%.0f) " ..
+      "ON CONFLICT(day,mac) DO UPDATE SET up=excluded.up, dn=excluded.dn;",
+      DAY, m, bu_up[m] or 0, bu_dn[m] or 0)
   end
 end
 

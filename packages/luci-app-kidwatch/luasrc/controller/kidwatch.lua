@@ -189,6 +189,20 @@ local function apps()
 		end
 	end
 	table.sort(out, function(a, b) return a.dur > b.dur end)
+
+	-- 应用级流量同样没有现成数据：固件 DPI 只给时长，字节数只到"设备"这一层。
+	-- 用这台设备当天真实字节总量，按各应用时长占比分摊；同一台设备各应用加起来
+	-- 正好等于固件的总量。前端必须带"≈"，别让家长当成实测值。
+	local fl, dur_of = flow(), {}
+	for _, r in ipairs(out) do
+		dur_of[r.mac] = (dur_of[r.mac] or 0) + r.dur
+	end
+	for _, r in ipairs(out) do
+		local f  = fl.per[r.mac]
+		local tb = f and ((f.up or 0) + (f.dn or 0)) or 0
+		local td = dur_of[r.mac] or 0
+		r.by = (tb > 0 and td > 0) and math.floor(tb * r.dur / td + 0.5) or 0
+	end
 	return out
 end
 

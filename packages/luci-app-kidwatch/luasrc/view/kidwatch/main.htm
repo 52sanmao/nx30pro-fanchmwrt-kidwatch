@@ -25,6 +25,18 @@
 #kw .kw-hint{display:block;font-size:12px;font-weight:400;color:var(--kw-dim);margin-top:3px}
 #kw .kw-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 #kw select,#kw input[type=text],#kw input[type=date]{height:30px;padding:0 8px;border:1px solid var(--kw-border);border-radius:6px;background:transparent;color:inherit;font-size:13px;max-width:170px}
+/* 深色下的下拉：以前是 background:transparent + color:inherit，
+   闭合状态没事，一展开就出事 —— <option> 继承了浅色文字，而原生弹层
+   默认是系统白底，于是"白底白字"。两件事都要做：
+   ① 给根节点声明 color-scheme，浏览器才会用深色渲染原生弹层（含滚动条）；
+   ② 再显式给 option 上底色，兜住不支持 color-scheme 的旧内核。 */
+[data-darkmode="true"]{color-scheme:dark}
+[data-darkmode="true"] #kw select,
+[data-darkmode="true"] #kw input[type=text],
+[data-darkmode="true"] #kw input[type=date]{color-scheme:dark;background:rgba(255,255,255,.06)}
+#kw select option,#kw select optgroup{background:#fff;color:#1f2937}
+[data-darkmode="true"] #kw select option,
+[data-darkmode="true"] #kw select optgroup{background:#232a36;color:#e8eaed}
 #kw .kw-seg{display:inline-flex;border:1px solid var(--kw-border);border-radius:6px;overflow:hidden}
 #kw .kw-seg button{appearance:none;border:0;background:transparent;color:var(--kw-dim);font-size:13px;padding:6px 11px;cursor:pointer}
 #kw .kw-seg button+button{border-left:1px solid var(--kw-border)}
@@ -35,6 +47,11 @@
 #kw .kw-chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--kw-dim);cursor:pointer;user-select:none;white-space:nowrap}
 #kw .kw-chk input{width:14px;height:14px;margin:0;accent-color:var(--kw-accent);cursor:pointer}
 #kw .kw-chk b{font-weight:500;color:inherit}
+
+/* 主题按钮放在固件顶栏（.top-navbar-right 的第一个），
+   套 .top-user-button 的圆角/底色，只补图标尺寸，别自己造一套视觉 */
+.kw-theme-top{width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center}
+.kw-theme-top svg{width:19px;height:19px;display:block}
 
 /* 五个视角是同一父菜单下的子页，页内不再放互跳链接 */
 
@@ -171,28 +188,20 @@
 #kw .kw-nrailfoot .zero{display:inline-flex;align-items:center;gap:5px}
 #kw .kw-nrailfoot .zero s{width:14px;height:0;border-top:1px dashed var(--kw-border);display:inline-block}
 
-/* 整点格 + 点开后的 10 分钟格 + 右侧域名面板 */
+/* 10 分钟一格的时间带（48 格）+ 右侧域名面板 */
 #kw .kw-nsplit{display:flex;gap:18px;align-items:flex-start}
 #kw .kw-nleft{--lbl:112px;--num:76px;flex:1 1 auto;min-width:0}
 #kw .kw-hcells{position:absolute;inset:0;display:grid;
-  grid-template-columns:repeat(8,minmax(0,1fr));gap:2px;padding:2px}
+  grid-template-columns:repeat(48,minmax(0,1fr));gap:1px;padding:2px}
 #kw .kw-hcell{appearance:none;border:0;padding:0;margin:0;background:transparent;
-  border-radius:4px;cursor:pointer;position:relative;min-width:0}
-#kw .kw-hcell i{position:absolute;inset:0;border-radius:4px;display:block}
-#kw .kw-hcell:hover{box-shadow:inset 0 0 0 1px var(--kw-dim)}
-#kw .kw-hcell.sel{box-shadow:inset 0 0 0 2px #D85A30}
-#kw .kw-trow{height:26px}
-#kw .kw-tlbl{font-size:11px;color:var(--kw-faint);padding-right:10px;text-align:right}
-#kw .kw-ttrack{position:relative;height:16px;border-radius:4px;background:var(--kw-soft);
+  border-radius:2px;cursor:crosshair;position:relative;min-width:0}
+#kw .kw-hcell i{position:absolute;inset:0;border-radius:2px;display:block}
+#kw .kw-hcell:hover{box-shadow:inset 0 0 0 1px var(--kw-dim);z-index:2}
+#kw .kw-hcell.sel{box-shadow:0 0 0 2px #D85A30, 0 0 0 3px rgba(216,90,48,.28);z-index:3}
+/* 图例：连续色条，代替原来四个离散色块 —— 颜色现在是渐变的 */
+#kw .kw-nrailfoot .grad{display:inline-flex;align-items:center;gap:6px}
+#kw .kw-nrailfoot .grad s{width:82px;height:8px;border-radius:2px;display:inline-block;
   box-shadow:inset 0 0 0 1px var(--kw-border)}
-#kw .kw-tcells{position:absolute;top:0;bottom:0;display:grid;
-  grid-template-columns:repeat(6,minmax(0,1fr));gap:2px;padding:2px}
-#kw .kw-tcell{appearance:none;border:0;padding:0;margin:0;background:transparent;
-  border-radius:3px;cursor:crosshair;position:relative;min-width:0}
-#kw .kw-tcell i{position:absolute;inset:0;border-radius:3px;display:block}
-#kw .kw-tcell:hover{box-shadow:inset 0 0 0 1px var(--kw-dim)}
-#kw .kw-hcell.sel{box-shadow:0 0 0 2px #D85A30, 0 0 0 3px rgba(216,90,48,.28);z-index:2}
-#kw .kw-tcell.sel{box-shadow:0 0 0 2px #D85A30}
 
 #kw .kw-ndom{flex:0 0 268px;min-width:0;border-left:1px solid var(--kw-border);padding-left:16px}
 #kw .kw-ndh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
@@ -558,6 +567,11 @@
 #kw .kwdm .kw-note{margin:12px 18px 6px}
 #kw .kwdm-body{overflow:auto;padding:0 18px 18px}
 #kw .kwdm-body .kw-tbl{width:100%}
+/* 设备表最后一列：改名之外还得能删 */
+#kw .kw-del{appearance:none;border:1px solid var(--kw-border);background:transparent;
+  color:var(--kw-dim);border-radius:5px;font-size:11.5px;padding:3px 8px;cursor:pointer;
+  white-space:nowrap}
+#kw .kw-del:hover{color:#D85A30;border-color:#D85A30;background:rgba(216,90,48,.08)}
 @media (max-width:860px){
   #kw .kwdm-box{width:96vw;max-height:88vh}
   #kw .kwdm-body{padding:0 10px 12px}
@@ -575,7 +589,6 @@
         <button data-r="7d">近 7 天</button>
         <button data-r="30d">近 30 天</button>
       </div>
-      <button class="kw-btn" id="kw-theme" title="主题模式：切换浅色 / 深色">主题</button>
       <button class="kw-btn" id="kw-refresh">刷新</button>
     </div>
   </div>
@@ -673,6 +686,9 @@
         </div>
       </div>
       <table class="kw-tbl kw-wtbl" id="web-tbl"></table>
+      <p class="kw-note" style="margin-top:8px">「流量 ≈」是估算：固件的字节统计只到
+        设备这一层，站点/应用级没有现成数据，这里按各自占用时长把该设备的当日真实流量分摊下去
+        —— 同一台设备各项加起来正好等于它的实际流量，但单项不要当实测值看。</p>
       <div class="kw-pager">
         <button id="web-prev">上一页</button>
         <span id="web-page"></span>
@@ -707,17 +723,17 @@
         <select id="night-day"></select>
         <button id="night-next" title="后一晚">›</button>
       </div>
-      <span class="kw-nwin">22:00 → 次日 06:00 · 8 个整点格</span>
+      <span class="kw-nwin">22:00 → 次日 06:00 · 10 分钟一格</span>
       <div class="kw-seg" id="night-mode">
         <button data-m="score" class="on">活跃度</button>
         <button data-m="by">流量</button>
       </div>
     </div>
 
-    <!-- 3. 一夜时间带：默认 8 个整点格，点一格拆成 10 分钟，右边列出那一小时连过的域名 -->
+    <!-- 3. 一夜时间带：每台设备 48 个 10 分钟格，颜色按活跃度渐变，点一格看那 10 分钟 -->
     <section class="kw-card">
       <div class="kw-cardhead">
-        <h3>一夜时间带<span class="sub" id="night-rail-sub">谁的手机还亮着 · 点一小时拆成 10 分钟</span></h3>
+        <h3>一夜时间带<span class="sub" id="night-rail-sub">谁的手机还亮着 · 一格 10 分钟 · 点一格看这 10 分钟</span></h3>
       </div>
       <div class="kw-nsplit">
         <div class="kw-nleft">
@@ -1279,13 +1295,14 @@
       }
       var max = Math.max.apply(null, rows.map(function(x){ return x.dur||0; }).concat([1]));
       var h = '<thead><tr><th>应用</th><th>设备</th><th>类目</th>'+
-              '<th>今日时长</th><th class="r">状态</th></tr></thead><tbody>';
+              '<th>今日时长</th><th class="r">流量 ≈</th><th class="r">状态</th></tr></thead><tbody>';
       rows.slice(0, 200).forEach(function(x){
         h += '<tr>'+
           '<td>'+siteCell(x.app || ('应用 #'+x.appid), x.appid ? ('#'+x.appid) : '', x.cat)+'</td>'+
           '<td class="nowrap"><span class="kw-wdevchip">'+esc(devLabel(x.mac, x.host))+'</span></td>'+
           '<td>'+catTag(x.cat)+'</td>'+
           '<td>'+durCell(x.dur, max, x.cat)+'</td>'+
+          '<td class="r num">'+(x.by ? '≈'+fmtBy(x.by) : '—')+'</td>'+
           '<td class="r">'+(x.online ? '<span class="kw-on">在线</span>' : '<span class="kw-off">—</span>')+'</td></tr>';
       });
       $('#web-tbl').html(h + '</tbody>');
@@ -1322,9 +1339,10 @@
       var showDay = S.range !== 'today';
       var max = Math.max.apply(null, rows.map(function(x){ return x.dur||0; }).concat([1]));
       var h = '<thead><tr>' + (showDay ? '<th>日期</th>' : '') +
-              '<th>站点</th><th>设备</th><th>类目</th><th>时长</th><th class="r">次数</th></tr></thead><tbody>';
+              '<th>站点</th><th>设备</th><th>类目</th><th>时长</th><th class="r">流量 ≈</th>'+
+              '<th class="r">次数</th></tr></thead><tbody>';
       if (!rows.length){
-        h += '<tr><td colspan="'+(showDay?6:5)+'" class="kw-empty" style="padding:30px">没有匹配的记录</td></tr>';
+        h += '<tr><td colspan="'+(showDay?7:6)+'" class="kw-empty" style="padding:30px">没有匹配的记录</td></tr>';
       } else {
         rows.forEach(function(x){
           h += '<tr class="wr" data-dom="'+esc(x.dom)+'" data-day="'+x.day+'" data-mac="'+esc(x.mac)+'">'+
@@ -1333,6 +1351,7 @@
                '<td class="nowrap"><span class="kw-wdevchip">'+esc(x.who || '—')+'</span></td>'+
                '<td>'+catTag(x.cat)+'</td>'+
                '<td>'+durCell(x.dur, max, x.cat)+'</td>'+
+               '<td class="r num">'+(x.by ? '≈'+fmtBy(x.by) : '—')+'</td>'+
                '<td class="r num">'+(x.n||0)+'</td></tr>';
         });
       }
@@ -1405,11 +1424,12 @@
   var NIGHT = { all:[], map:{}, base:{}, slots:[], day:0, devs:[] };
   var nightMode = 'score';       // score = 活跃度 / by = 流量
 
-  // 窗口 22:00 → 次日 06:00，两头都落在整点上，正好 8 个整点格。
-  // 采集端 win 表仍是 5 分钟一条（96 条），默认按小时聚合，点开某一格再拆成 6 个 10 分钟。
-  var NHOUR = 8;
-  // 当前点开的设备 + 第几小时 + 第几个 10 分钟（k=-1 表示整小时）
-  var NSEL = { mac:'', h:-1, k:-1 };
+  // 窗口 22:00 → 次日 06:00，每 10 分钟一格 = 48 格。
+  // 采集端 win 表仍是 5 分钟一条（96 条），这里是两两合并 —— 10 分钟是
+  // "看得出趋势"和"每格还点得中"之间的平衡点；再细分就成了一排针尖。
+  var NSLOT = 48;
+  // 当前点开的设备 + 第几格（-1 = 没展开）
+  var NSEL = { mac:'', i:-1 };
   function nightRange(day){ return { a: day + 22*3600, b: day + 86400 + 6*3600 }; }
   function nightSlots(day){
     var r = nightRange(day), out = [];
@@ -1730,93 +1750,83 @@
     }
   }
 
-  // 一台设备某一小时（12 个 5 分钟格）的汇总
-  function hourAgg(rc, slots, h){
+  // 一台设备一格（10 分钟 = 两个 5 分钟桶）的汇总。
+  // on 用"有没有在用"而不是"有没有数据"：待机保活每格都有字节，但那不是使用。
+  function cellAgg(rc, slots, i){
     var a = { on:0, mins:0, by:0, score:0 };
-    for (var k = h*12; k < (h+1)*12 && k < slots.length; k++){
+    for (var k = i*2; k <= i*2+1; k++){
       var w = rc[slots[k]];
       if (!w) continue;
       a.by += w.by || 0;
       var sc = score(w);
       if (sc > a.score) a.score = sc;
-      if (slotOn(w)){ a.on++; a.mins += 5; }
+      if (slotOn(w)){ a.on = 1; a.mins += 5; }
     }
     return a;
   }
 
-  // 色阶分母：**和当前聚合层级一致**的 P95。
-  // 这里踩过两次坑，别再改回去：
-  //   ① 原来用全局最大值 —— 一次 154MB 的突发把其它格子压到 v≈0，两种模式看着一模一样；
-  //   ② 改成所有 5 分钟格的 P95 —— 却拿去归一"整小时汇总"，每小时都远大于它，全部顶到最满色。
+  // 色阶分母：全部亮格取 P95，不用最大值 —— 一次 154MB 的突发会把别的格子压成 0。
+  // 分子分母现在都是 10 分钟格，同一层级，不会再出现"拿小时汇总比 5 分钟 P95"。
   function p95(vals){
     if (!vals.length) return 1;
     var a = vals.slice().sort(function(x, y){ return x - y; });
     return Math.max(1, a[Math.min(a.length-1, Math.floor(a.length*0.95))]);
   }
-  // 这台设备整晚 10 分钟粒度的流量样本，给 tenRow 算自己的分母
-  function tenBys(rc, slots){
-    var out = [];
-    for (var i = 0; i + 1 < slots.length; i += 2){
-      var w1 = rc[slots[i]], w2 = rc[slots[i+1]];
-      var by = ((w1 && w1.by) || 0) + ((w2 && w2.by) || 0);
-      if (by > 0) out.push(by);
-    }
-    return out;
+
+  // 渐变而不是"五档离散色"：从低到高插值，颜色随使用强度连续变化。
+  // 两套色阶是因为浅色底上的浅米白放到深色底会糊成一片，反之亦然。
+  // 低端不要用接近底色的浅灰/深蓝：轨道本身就是浅灰，那样"轻微在用"会看成空白。
+  // 两套色阶的低端都从米黄/褐黄起步，保证一眼能分出"有记录"和"没记录"。
+  var RAMP_L = [[0,'#F6E6CC'],[0.18,'#F0C382'],[0.40,'#EDA24E'],
+                [0.65,'#DC7028'],[0.85,'#BE3E1B'],[1,'#7E2410']];
+  var RAMP_D = [[0,'#5B4A32'],[0.18,'#8A6A35'],[0.40,'#B27A28'],
+                [0.65,'#CF7524'],[0.85,'#E2641F'],[1,'#F58F52']];
+  function rgbOf(h){
+    return [parseInt(h.substr(1,2),16), parseInt(h.substr(3,2),16), parseInt(h.substr(5,2),16)];
   }
+  function rampAt(stops, x){
+    x = Math.max(0, Math.min(1, x || 0));
+    for (var i = 1; i < stops.length; i++){
+      if (x <= stops[i][0]){
+        var a = stops[i-1], b = stops[i];
+        var k = (x - a[0]) / ((b[0] - a[0]) || 1);
+        var ca = rgbOf(a[1]), cb = rgbOf(b[1]);
+        return 'rgb(' + [0,1,2].map(function(j){
+          return Math.round(ca[j] + (cb[j] - ca[j]) * k);
+        }).join(',') + ')';
+      }
+    }
+    return stops[stops.length-1][1];
+  }
+  function rampStops(){ return themeIsDark() ? RAMP_D : RAMP_L; }
+  function rampColor(x){ return rampAt(rampStops(), x); }
 
   function cellV(agg, den){
     return nightMode === 'by' ? Math.min(1, (agg.by||0)/den) : Math.min(1, (agg.score||0)/100);
-  }
-
-  // 展开的那一行：这一小时的 6 个 10 分钟格
-  function tenRow(d, rc, slots, h, a0){
-    var den = p95(tenBys(rc, slots));
-    var cells = '';
-    for (var k = 0; k < 6; k++){
-      var i0 = h*12 + k*2;
-      var w1 = rc[slots[i0]], w2 = rc[slots[i0+1]];
-      var on = slotOn(w1) || slotOn(w2);
-      var sc = Math.max(score(w1), score(w2));
-      var by = ((w1 && w1.by) || 0) + ((w2 && w2.by) || 0);
-      var mins = (slotOn(w1) ? 5 : 0) + (slotOn(w2) ? 5 : 0);
-      var t = a0 + h*3600 + k*600;
-      var tsel = (NSEL.mac === d.mac && NSEL.h === h && NSEL.k === k) ? ' sel' : '';
-      cells += '<button type="button" class="kw-tcell' + (on ? ' on' : '') + tsel + '"'
-            +  ' data-mac="' + esc(d.mac) + '" data-h="' + h + '" data-k="' + k + '" data-t="' + t + '"'
-            +  ' data-mins="' + mins + '" data-by="' + by + '" data-sc="' + sc + '"'
-            +  ' aria-label="' + hhmm(t) + '">'
-            +  (on ? '<i style="background:' + hexA('#D85A30', (0.14 + cellV({by:by, score:sc}, den)*0.80).toFixed(3)) + '"></i>' : '')
-            +  '</button>';
-    }
-    // 这一行只占"被点中的那一小时"那一竖条，对齐到上面的整点格
-    var left = (h/NHOUR*100).toFixed(4), wid = (100/NHOUR).toFixed(4);
-    return '<div class="kw-rrow kw-trow">'
-         +   '<div class="kw-tlbl">10 分钟</div>'
-         +   '<div class="kw-ttrack"><div class="kw-tcells" style="left:' + left + '%;width:' + wid + '%">'
-         +     cells + '</div></div>'
-         +   '<div class="kw-rmeta"></div>'
-         + '</div>';
   }
 
   function renderRail(day, devs, map, slots, base){
     var el = document.getElementById('night-rail');
     if (!el) return;
     var rng = nightRange(day);
-    // 两遍：先把每台设备 8 个小时的汇总都算出来，再按整点层级的 P95 定色阶
-    var aggRows = devs.map(function(d){
-      var rc0 = map[d.mac] || {}, row = [];
-      for (var h0 = 0; h0 < NHOUR; h0++) row.push(hourAgg(rc0, slots, h0));
-      return row;
-    });
-    var byVals = [];
-    aggRows.forEach(function(row){ row.forEach(function(a){ if (a.on) byVals.push(a.by); }); });
-    var den = p95(byVals);
 
-    // 刻度：22:00 … 06:00，9 个整点
+    // 两遍：先把所有设备的所有格子算出来，再按同一层级的 P95 定色阶
+    var rows = devs.map(function(d){
+      var rc = map[d.mac] || {}, out = [];
+      for (var i = 0; i < NSLOT; i++) out.push(cellAgg(rc, slots, i));
+      return out;
+    });
+    var vals = [];
+    rows.forEach(function(r){
+      r.forEach(function(a){ if (a.on) vals.push(nightMode === 'by' ? a.by : a.score); });
+    });
+    var den = p95(vals);
+
+    // 刻度：22:00 … 06:00，每小时 6 格
     var th = '<div class="kw-rtick">';
-    for (var hh = 0; hh <= NHOUR; hh++){
-      var cls = hh === 0 ? 'e' : (hh === NHOUR ? 'e end' : (hh === 2 ? 'z' : ''));
-      th += '<span class="' + cls + '" style="left:' + (hh/NHOUR*100).toFixed(2) + '%">'
+    for (var hh = 0; hh <= 8; hh++){
+      var cls = hh === 0 ? 'e' : (hh === 8 ? 'e end' : (hh === 2 ? 'z' : ''));
+      th += '<span class="' + cls + '" style="left:' + (hh/8*100).toFixed(2) + '%">'
           + hhmm(rng.a + hh*3600) + '</span>';
     }
     th += '</div>';
@@ -1830,40 +1840,40 @@
 
     var body = '';
     devs.forEach(function(d, di){
-      var rc = map[d.mac] || {}, cells = '', mins = 0;
-      for (var h = 0; h < NHOUR; h++){
-        var agg = aggRows[di][h];
-        mins += agg.mins;
-        var sel = (NSEL.mac === d.mac && NSEL.h === h) ? ' sel' : '';
-        cells += '<button type="button" class="kw-hcell' + (agg.on ? ' on' : '') + sel + '"'
-              +  ' data-mac="' + esc(d.mac) + '" data-h="' + h + '"'
-              +  ' data-mins="' + agg.mins + '" data-by="' + agg.by + '" data-sc="' + agg.score + '"'
-              +  ' aria-label="' + hhmm(rng.a + h*3600) + '">'
-              +  (agg.on ? '<i style="background:' + hexA('#D85A30', (0.14 + cellV(agg, den)*0.80).toFixed(3)) + '"></i>' : '')
+      var cells = '', mins = 0;
+      for (var i = 0; i < NSLOT; i++){
+        var a = rows[di][i];
+        mins += a.mins;
+        var sel = (NSEL.mac === d.mac && NSEL.i === i) ? ' sel' : '';
+        cells += '<button type="button" class="kw-hcell' + (a.on ? ' on' : '') + sel + '"'
+              +  ' data-mac="' + esc(d.mac) + '" data-i="' + i + '"'
+              +  ' data-mins="' + a.mins + '" data-by="' + a.by + '" data-sc="' + a.score + '"'
+              +  ' aria-label="' + hhmm(rng.a + i*600) + '">'
+              +  (a.on ? '<i style="background:' + rampColor(cellV(a, den)) + '"></i>' : '')
               +  '</button>';
       }
       body += '<div class="kw-rrow">'
             +   '<div class="kw-rname" title="' + esc(devName(d)) + '">' + esc(nname(d)) + '</div>'
             +   '<div class="kw-rtrack">'
-            +     '<div class="kw-rzero" style="left:' + (2/NHOUR*100).toFixed(2) + '%"></div>'
+            +     '<div class="kw-rzero" style="left:25%"></div>'
             +     '<div class="kw-hcells">' + cells + '</div>'
             +   '</div>'
             +   '<div class="kw-rmeta' + (mins >= 20 ? ' hot' : '') + '">' + (mins ? mins + ' 分' : '—') + '</div>'
             + '</div>';
-      if (NSEL.mac === d.mac && NSEL.h >= 0) body += tenRow(d, rc, slots, NSEL.h, rng.a);
     });
     el.innerHTML = th + body;
 
-    var ft = '';
-    [0,1,2,3,4].forEach(function(b){
-      ft += '<span class="lg"><i style="background:' + bandColor(b) + '"></i>' + BANDS[b] + '</span>';
-    });
+    // 图例：连续色条（颜色是渐变的，再用四个离散色块就对不上了）
+    var gs = rampStops().map(function(s){
+      return s[1] + ' ' + Math.round(s[0]*100) + '%';
+    }).join(',');
+    var ft = '<span class="grad">少<s style="background:linear-gradient(90deg,' + gs + ')"></s>多</span>';
     ft += '<span class="zero"><s></s>0 点</span>';
     if (NIGHT.idle) ft += '<span>另有 ' + NIGHT.idle + ' 台整夜只有待机保活，未列出</span>';
     ft += '<span style="margin-left:auto">'
         + (nightMode === 'by'
-            ? '颜色 = 这一小时流量（按 P95 归一，不取最大值）'
-            : '颜色 = 这一小时里最活跃的那 5 分钟')
+            ? '颜色越深 = 这 10 分钟流量越大（按 P95 归一，不取最大值）'
+            : '颜色越深 = 这 10 分钟真的在用，不是流量大小')
         + '</span>';
     $('#night-railfoot').html(ft);
     renderNightDom();
@@ -1871,58 +1881,47 @@
     if (!el.__bound){
       el.__bound = 1;
       el.addEventListener('mouseover', function(e){
-        var c = e.target.closest ? e.target.closest('.kw-hcell,.kw-tcell') : null;
+        var c = e.target.closest ? e.target.closest('.kw-hcell') : null;
         if (!c) return;
-        var mac = c.getAttribute('data-mac');
+        var mac = c.getAttribute('data-mac'), i = +c.getAttribute('data-i');
         var dv = null;
         (NIGHT.devs || []).forEach(function(x){ if (x.mac === mac) dv = x; });
-        var isHour = c.classList.contains('kw-hcell');
-        var t0 = isHour ? NIGHT.day + 22*3600 + (+c.getAttribute('data-h'))*3600
-                        : (+c.getAttribute('data-t'));
-        tipShow(c, nightTipHtml(dv ? nname(dv) : mac, t0, isHour ? 3600 : 600,
+        tipShow(c, nightTipHtml(dv ? nname(dv) : mac, NIGHT.day + 22*3600 + i*600, 600,
                                 +c.getAttribute('data-mins') || 0,
                                 +c.getAttribute('data-by') || 0,
                                 +c.getAttribute('data-sc') || 0,
                                 NIGHT.base[mac] || 0));
       });
       el.addEventListener('mouseout', function(e){
-        var c = e.target.closest ? e.target.closest('.kw-hcell,.kw-tcell') : null;
+        var c = e.target.closest ? e.target.closest('.kw-hcell') : null;
         if (c) tipHide();
       });
       el.addEventListener('click', function(e){
-        var c = e.target.closest ? e.target.closest('.kw-hcell,.kw-tcell') : null;
+        var c = e.target.closest ? e.target.closest('.kw-hcell') : null;
         if (!c) return;
-        var mac = c.getAttribute('data-mac'), h = +c.getAttribute('data-h');
-        if (c.classList.contains('kw-tcell')){
-          var k = +c.getAttribute('data-k');
-          // 点同一个 10 分钟格 = 退回整小时
-          NSEL = (NSEL.mac === mac && NSEL.h === h && NSEL.k === k)
-               ? { mac:mac, h:h, k:-1 } : { mac:mac, h:h, k:k };
-          tipHide();
-          renderRail(NIGHT.day, NIGHT.devs, NIGHT.map, NIGHT.slots, NIGHT.base);
-          return;
-        }
-        NSEL = (NSEL.mac === mac && NSEL.h === h) ? { mac:'', h:-1, k:-1 } : { mac:mac, h:h, k:-1 };
+        var mac = c.getAttribute('data-mac'), i = +c.getAttribute('data-i');
+        // 点同一格 = 收起
+        NSEL = (NSEL.mac === mac && NSEL.i === i) ? { mac:'', i:-1 } : { mac:mac, i:i };
         tipHide();
         renderRail(NIGHT.day, NIGHT.devs, NIGHT.map, NIGHT.slots, NIGHT.base);
       });
     }
   }
 
-  // 右侧面板：点中的那台设备、那一小时里连过的域名与起止时间。
+  // 右侧面板：点中的那台设备、那 10 分钟里连过的域名与起止时间。
   // 数据来自 sess 表（采集端每次轮询写一条 域名 + ts0/ts1），
   // 所以这里能看到"01:12 开始连 douyinvod.com、持续 3 分钟"这种颗粒。
   var NDOMSEQ = 0;
   function renderNightDom(){
     var box = document.getElementById('night-dom');
     if (!box) return;
-    if (!NSEL.mac || NSEL.h < 0){
-      box.innerHTML = '<div class="kw-ndh">这一小时连了哪些站</div>'
-        + '<div class="kw-nde">点左边任意一格<br>这里列出这台设备在那 60 分钟里连过的域名、起始时间和时长。</div>';
+    if (!NSEL.mac || NSEL.i < 0){
+      box.innerHTML = '<div class="kw-ndh">这 10 分钟连了哪些站</div>'
+        + '<div class="kw-nde">点左边任意一格<br>这里列出这台设备在那 10 分钟里连过的域名、起始时间和时长。</div>';
       return;
     }
-    var span = NSEL.k >= 0 ? 600 : 3600;
-    var t0 = NIGHT.day + 22*3600 + NSEL.h*3600 + (NSEL.k >= 0 ? NSEL.k*600 : 0);
+    var span = 600;
+    var t0 = NIGHT.day + 22*3600 + NSEL.i*600;
     var dv = null;
     (NIGHT.devs || []).forEach(function(x){ if (x.mac === NSEL.mac) dv = x; });
     var who = dv ? nname(dv) : NSEL.mac;
@@ -2126,8 +2125,9 @@
 
   function renderDevTable(rows){
     var h = '<thead><tr><th>设备</th><th>角色</th><th>统计</th>'+
-            '<th class="r">今日时长</th><th class="r">今日流量</th><th class="r">最后活动</th></tr></thead><tbody>';
-    if (!rows.length){ h += '<tr><td colspan="6" class="kw-empty">还没有任何设备记录</td></tr>'; }
+            '<th class="r">今日时长</th><th class="r">今日流量</th><th class="r">最后活动</th>'+
+            '<th class="r">操作</th></tr></thead><tbody>';
+    if (!rows.length){ h += '<tr><td colspan="7" class="kw-empty">还没有任何设备记录</td></tr>'; }
     rows.forEach(function(x){
       var last = x.last ? hhmm(x.last) : '—';
       h += '<tr data-mac="'+esc(x.mac)+'">'+
@@ -2146,9 +2146,24 @@
             }).join('')+'</select></td>'+
         '<td class="r num">'+fmtDur(x.dur)+'</td>'+
         '<td class="r num">'+fmtBy(devBy(x.mac))+'</td>'+
-        '<td class="r num">'+last+'</td></tr>';
+        '<td class="r num">'+last+'</td>'+
+        '<td class="r"><button class="kw-del" data-del="'+esc(x.mac)+'" title="删除这台设备的记录">删除</button></td></tr>';
     });
     $('#dev-tbl').html(h + '</tbody>');
+    // 删除：只删我们自己的记录，不动固件。设备还在线的话下轮采样会回来，
+    // 所以确认框里把这条说清楚，并提示"长期不显示"要用「忽略」。
+    $('#dev-tbl').off('click', '.kw-del').on('click', '.kw-del', function(){
+      var mac = $(this).data('del'), tr = $(this).closest('tr');
+      var nm = tr.find('.kw-devin[data-k=alias]').val() || tr.find('.dom').text().split(' ')[0] || mac;
+      if (!confirm('删除「' + nm + '」的全部记录？\n\n'
+          + '· 别名、每日时长、域名明细、夜间采样会一并清掉，不可恢复\n'
+          + '· 如果它还在线，下一次采样（约 3 分钟）会重新出现\n'
+          + '· 想让它长期不显示，把「统计」设为「忽略」，而不是删掉')) return;
+      api({fn:'setdev', mac:mac, key:'del', val:''}, function(){
+        openDevSet();
+        if (S.tab === 'web') loadSideDevs();
+      });
+    });
     $('#dev-tbl :input').on('change', function(){
       var tr = $(this).closest('tr'), mac = tr.data('mac');
       var k = $(this).data('k'), v = $(this).val();
@@ -2429,13 +2444,43 @@
          || document.body.getAttribute('data-darkmode');
     return a === 'true';
   }
+  var ICO_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"'
+              + ' stroke-linecap="round"><circle cx="12" cy="12" r="4.1"/>'
+              + '<path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2'
+              + 'M5.3 5.3L6.9 6.9M17.1 17.1l1.6 1.6M18.7 5.3L17.1 6.9M6.9 17.1l-1.6 1.6"/></svg>';
+  var ICO_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"'
+               + ' stroke-linecap="round" stroke-linejoin="round">'
+               + '<path d="M20.6 14.4A8.6 8.6 0 0 1 9.6 3.4 8.6 8.6 0 1 0 20.6 14.4z"/></svg>';
+
   function themePaint(dark){
     document.documentElement.setAttribute('data-darkmode', dark ? 'true' : 'false');
-    var b = document.getElementById('kw-theme');
+    var b = document.getElementById('kw-theme-top');
     if (b){
-      b.textContent = dark ? '深色' : '浅色';
+      b.innerHTML = dark ? ICO_SUN : ICO_MOON;
       b.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      b.title = dark ? '主题模式：当前深色，点击切浅色' : '主题模式：当前浅色，点击切深色';
     }
+  }
+
+  // 主题按钮挂在固件顶栏 .top-navbar-right 的第一个位置 ——
+  // 也就是用户头像和「普通模式」的左边，整屏右上角。
+  // 复用 .top-user-button，尺寸/圆角/悬停底色跟固件原生按钮完全一致。
+  // 顶栏是主题 JS 后渲染的，所以拿不到就短暂重试几次。
+  function themeMount(tries){
+    var bar = document.querySelector('.top-navbar-right');
+    if (!bar){
+      if ((tries || 0) < 25) setTimeout(function(){ themeMount((tries || 0) + 1); }, 160);
+      return;
+    }
+    if (document.getElementById('kw-theme-top')){ themePaint(themeIsDark()); return; }
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.id = 'kw-theme-top';
+    b.className = 'top-user-button kw-theme-top';
+    b.setAttribute('aria-label', '主题模式');
+    b.addEventListener('click', function(){ themeSet(!themeIsDark()); });
+    bar.insertBefore(b, bar.firstChild);
+    themePaint(themeIsDark());
   }
   function themeSet(dark, silent){
     themePaint(dark);
@@ -2451,7 +2496,8 @@
     refresh();
     api({fn:'theme', v: dark ? 1 : 0}, function(){});
   }
-  $('#kw-theme').on('click', function(){ themeSet(!themeIsDark()); });
+  themeMount();
+  $(window).on('load', function(){ themeMount(); });
 
   // 启动
   // 先按记住的偏好把主题摆好再画图，否则第一屏图表会用旧主题的灰阶
