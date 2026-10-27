@@ -1738,18 +1738,24 @@
     return a;
   }
 
-  // 流量口径的分母：所有非零格子字节数的 P95。
-  // 不能拿全局最大值 —— 一次 154MB 的突发会把其它格子全压到最浅色，
-  // 于是"切到流量视图"看起来跟活跃度一模一样，这个 bug 就是这么来的。
-  function nightByDen(map){
-    var a = [];
-    Object.keys(map).forEach(function(m){
-      var rc = map[m] || {};
-      Object.keys(rc).forEach(function(k){ var v = rc[k] && rc[k].by; if (v > 0) a.push(v); });
-    });
-    if (!a.length) return 1;
-    a.sort(function(x, y){ return x - y; });
+  // 色阶分母：**和当前聚合层级一致**的 P95。
+  // 这里踩过两次坑，别再改回去：
+  //   ① 原来用全局最大值 —— 一次 154MB 的突发把其它格子压到 v≈0，两种模式看着一模一样；
+  //   ② 改成所有 5 分钟格的 P95 —— 却拿去归一"整小时汇总"，每小时都远大于它，全部顶到最满色。
+  function p95(vals){
+    if (!vals.length) return 1;
+    var a = vals.slice().sort(function(x, y){ return x - y; });
     return Math.max(1, a[Math.min(a.length-1, Math.floor(a.length*0.95))]);
+  }
+  // 这台设备整晚 10 分钟粒度的流量样本，给 tenRow 算自己的分母
+  function tenBys(rc, slots){
+    var out = [];
+    for (var i = 0; i + 1 < slots.length; i += 2){
+      var w1 = rc[slots[i]], w2 = rc[slots[i+1]];
+      var by = ((w1 && w1.by) || 0) + ((w2 && w2.by) || 0);
+      if (by > 0) out.push(by);
+    }
+    return out;
   }
 
   function cellV(agg, den){
@@ -1757,7 +1763,8 @@
   }
 
   // 展开的那一行：这一小时的 6 个 10 分钟格
-  function tenRow(d, rc, slots, h, a0, den){
+  function tenRow(d, rc, slots, h, a0){
+    var den = p95(tenBys(rc, slots));
     var cells = '';
     for (var k = 0; k < 6; k++){
       var i0 = h*12 + k*2;
@@ -1789,7 +1796,15 @@
     var el = document.getElementById('night-rail');
     if (!el) return;
     var rng = nightRange(day);
-    var den = nightByDen(map);
+    // 两遍：先把每台设备 8 个小时的汇总都算出来，再按整点层级的 P95 定色阶
+    var aggRows = devs.map(function(d){
+      var rc0 = map[d.mac] || {}, row = [];
+      for (var h0 = 0; h0 < NHOUR; h0++) row.push(hourAgg(rc0, slots, h0));
+      return row;
+    });
+    var byVals = [];
+    aggRows.forEach(function(row){ row.forEach(function(a){ if (a.on) byVals.push(a.by); }); });
+    var den = p95(byVals);
 
     // 刻度：22:00 … 06:00，9 个整点
     var th = '<div class="kw-rtick">';
@@ -1808,10 +1823,10 @@
     }
 
     var body = '';
-    devs.forEach(function(d){
+    devs.forEach(function(d, di){
       var rc = map[d.mac] || {}, cells = '', mins = 0;
       for (var h = 0; h < NHOUR; h++){
-        var agg = hourAgg(rc, slots, h);
+        var agg = aggRows[di][h];
         mins += agg.mins;
         var sel = (NSEL.mac === d.mac && NSEL.h === h) ? ' sel' : '';
         cells += '<button type="button" class="kw-hcell' + (agg.on ? ' on' : '') + sel + '"'
@@ -1829,7 +1844,7 @@
             +   '</div>'
             +   '<div class="kw-rmeta' + (mins >= 20 ? ' hot' : '') + '">' + (mins ? mins + ' 分' : '—') + '</div>'
             + '</div>';
-      if (NSEL.mac === d.mac && NSEL.h >= 0) body += tenRow(d, rc, slots, NSEL.h, rng.a, den);
+      if (NSEL.mac === d.mac && NSEL.h >= 0) body += tenRow(d, rc, slots, NSEL.h, rng.a);
     });
     el.innerHTML = th + body;
 
