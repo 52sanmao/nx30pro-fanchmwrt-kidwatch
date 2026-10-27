@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT);
 CREATE TABLE IF NOT EXISTS dev(
   mac  TEXT PRIMARY KEY,
   alias TEXT NOT NULL DEFAULT '',
+  nick TEXT NOT NULL DEFAULT '',   -- 固件"终端列表"里给设备起的备注（nickname）
   role TEXT NOT NULL DEFAULT 'child',
   mode TEXT NOT NULL DEFAULT 'full',
   host TEXT NOT NULL DEFAULT '',
@@ -95,6 +96,9 @@ CREATE TABLE IF NOT EXISTS sysh(
 );
 INSERT OR IGNORE INTO meta(k,v) VALUES('schema','1');
 EOF
+	# 老库补列：CREATE TABLE IF NOT EXISTS 不会给已存在的表加字段。
+	# 幂等——列已存在时 sqlite3 报 duplicate column，忽略即可。
+	sqlite3 "$DB" "ALTER TABLE dev ADD COLUMN nick TEXT NOT NULL DEFAULT '';" 2>/dev/null
 	import_sites
 }
 
@@ -275,7 +279,7 @@ q_list() {
 	TOT=$(sj "SELECT COUNT(*) AS c FROM (SELECT d.day,d.mac,d.dom FROM daily d LEFT JOIN site s ON s.dom=d.dom WHERE $R GROUP BY d.day,d.mac,d.dom);" | sed -n 's/.*"c":\([0-9]*\).*/\1/p')
 	ROWS=$(sj "
 	SELECT d.day AS day, d.mac AS mac,
-	       COALESCE(NULLIF(dv.alias,''),NULLIF(dv.host,''),d.mac) AS who,
+	       COALESCE(NULLIF(dv.alias,''),NULLIF(dv.nick,''),NULLIF(dv.host,''),d.mac) AS who,
 	       d.dom AS dom,
 	       COALESCE(s.name,'') AS name,
 	       COALESCE(s.cat,'other') AS cat,
@@ -315,22 +319,26 @@ q_devs() {
 	D=$(nmid "$(date +%Y-%m-%d)")
 	# 设备清单以固件为准（devlive 来自 fwx 的 get_all_users / visit_list），
 	# dev 只提供别名与角色；两表按 mac 关联，避免各存一份设备信息。
+	# 名字优先级：本页别名 > 固件备注(nick) > 主机名 > MAC —— 用户在固件
+	# "终端列表"里起的备注，在这里也要认，否则同一台机器两处叫两个名字。
 	sj "
 	WITH u AS (
 	  SELECT l.mac AS mac,
-	         COALESCE(NULLIF(v.alias,''),NULLIF(v.host,''),NULLIF(l.host,''),l.mac) AS name,
+	         COALESCE(NULLIF(v.alias,''),NULLIF(v.nick,''),NULLIF(v.host,''),NULLIF(l.host,''),l.mac) AS name,
 	         COALESCE(v.role,'child') AS role,
 	         COALESCE(v.mode,'full')  AS mode,
 	         COALESCE(v.alias,'') AS alias,
+	         COALESCE(v.nick,'')  AS nick,
 	         l.host AS host, l.ip AS ip, l.online AS online, l.wl AS wl, l.ts AS last
 	  FROM devlive l LEFT JOIN dev v ON v.mac=l.mac
 	  UNION ALL
-	  SELECT v.mac, COALESCE(NULLIF(v.alias,''),NULLIF(v.host,''),v.mac),
-	         v.role, v.mode, v.alias, COALESCE(v.host,''), COALESCE(v.ip,''), 0, 0, COALESCE(v.last,0)
+	  SELECT v.mac, COALESCE(NULLIF(v.alias,''),NULLIF(v.nick,''),NULLIF(v.host,''),v.mac),
+	         v.role, v.mode, v.alias, COALESCE(v.nick,''), COALESCE(v.host,''), COALESCE(v.ip,''), 0, 0, COALESCE(v.last,0)
 	  FROM dev v WHERE NOT EXISTS(SELECT 1 FROM devlive l WHERE l.mac=v.mac)
 	)
 	SELECT u.mac AS mac, u.name AS name, u.role AS role, u.mode AS mode,
-	       u.alias AS alias, u.host AS host, u.ip AS ip, u.online AS online, u.wl AS wl, u.last AS last,
+	       u.alias AS alias, u.nick AS nick, u.host AS host,
+	       u.ip AS ip, u.online AS online, u.wl AS wl, u.last AS last,
 	       MIN(COALESCE((SELECT SUM(dur) FROM daily WHERE mac=u.mac AND day=$D),0),86400) AS dur,
 	       COALESCE((SELECT SUM(up+dn) FROM daily WHERE mac=u.mac AND day=$D),0) AS by
 	FROM u ORDER BY dur DESC, last DESC;"

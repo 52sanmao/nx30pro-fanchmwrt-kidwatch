@@ -152,14 +152,20 @@ local function esc(v)
   if v == nil then return "" end
   v = tostring(v)
   if v == "" or v == "nil" then return "" end
-  return (v:gsub("'", ""))
+  -- 单引号会断开 SQL 字面量；换行/制表会把拼出来的一条语句拆成两条 —— 都要去掉
+  return (v:gsub("[\r\n\t]", " "):gsub("'", ""))
 end
 
 -- 一次聚合拿活跃网址/应用/系统，再补三次小接口
 local dash = ubus("get_dashboard_common") or {}
 local hosts = (dash.active_host or {}).list or {}
 local apps = (dash.active_app or {}).list or {}
-local users = ubus("get_all_users") or {}
+local users = ubus("get_all_users", { flag = 3, page = 1, page_size = 200 })
+-- flag=3 才会带 hostname / nickname（不带参数是精简版，只有 mac 与在线状态）。
+-- 万一这版固件不认 flag，退回精简版，别让设备列表整个空掉。
+if not users or type(users.list) ~= "table" or #users.list == 0 then
+  users = ubus("get_all_users") or {}
+end
 local vis = ubus("visit_list") or {}
 local cls = ubus("class_list", {}, { CopyRight = "www.fanchmwrt.com" }) or {}
 
@@ -231,12 +237,17 @@ local function guess_cat(host)
 end
 
 -- 设备在线状态（get_all_users 是终端列表的同一份数据）
+-- 顺手把固件里给设备起的备注（nickname）捞出来：固件"终端列表"显示的就是它，
+-- 我们这边以前只认自己的 alias，结果同一台机器在两边叫两个名字。
 local online, wl = {}, {}
+local nick_of = {}
 local ulist = users.list or users.dev_list or {}
 for _, u in ipairs(ulist) do
   if u.mac then
     online[u.mac] = tonumber(u.online) or 0
     wl[u.mac] = tonumber(u.is_wireless) or 0
+    -- 只在该字段真实存在时记录：空串也要记，用户在固件里删掉备注时这边跟着清空
+    if type(u.nickname) == "string" then nick_of[u.mac] = esc(u.nickname) end
   end
 end
 
@@ -478,6 +489,12 @@ for _, u in ipairs(ulist) do
       "online=excluded.online, wl=excluded.wl, ts=excluded.ts;",
       mac, host_of[mac] or "", ip_of[mac] or "", ip6_of[mac] or "",
       online[mac] or 0, wl[mac] or 0, NOW)
+    -- 固件备注同步进 dev.nick：页面取名时排在 alias 之后、hostname 之前
+    if nick_of[mac] ~= nil then
+      sql[#sql + 1] = string.format(
+        "INSERT INTO dev(mac,nick) VALUES('%s','%s') " ..
+        "ON CONFLICT(mac) DO UPDATE SET nick=excluded.nick;", mac, nick_of[mac])
+    end
   end
 end
 

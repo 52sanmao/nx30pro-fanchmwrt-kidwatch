@@ -1046,12 +1046,12 @@
       // 同名设备（家里两台 "ADY-AL00"）会在列表里变成两条一模一样的，用 MAC 末两位区分
       var seen = {};
       ds.forEach(function(x){
-        var n = x.alias || x.name || x.host || x.mac;
+        var n = x.alias || x.nick || x.name || x.host || x.mac;
         seen[n] = (seen[n] || 0) + 1;
       });
       var h = '';
       ds.slice(0,7).forEach(function(x){
-        var nm = x.alias || x.name || x.host || x.mac;
+        var nm = x.alias || x.nick || x.name || x.host || x.mac;
         if (seen[nm] > 1 && x.mac) nm += ' · ' + String(x.mac).slice(-2);
         var pc = (x.dur||0)/mx*100;
         var col = x.role === 'child' ? '#378ADD' : (x.role === 'iot' ? '#B4B2A9' : '#7F77DD');
@@ -2074,7 +2074,9 @@
   }
 
   /* ---------------- 上网详单：左边挑设备，右边看明细 ---------------- */
-  function devName(x){ return x.alias || x.name || x.host || x.mac; }
+  // 设备名：本页别名 > 固件备注 > 后端合成名 > 主机名 > MAC
+  // 固件"终端列表"里起的备注（nickname）也认，否则同一台机器两处叫两个名字
+  function devName(x){ return x.alias || x.nick || x.name || x.host || x.mac; }
   // 流量只在概览加载过一次；直接进这一页时没有，得自己取
   function ensureFlow(cb){
     if (S.flow) return cb();
@@ -2123,8 +2125,9 @@
     rows.forEach(function(x){
       var last = x.last ? hhmm(x.last) : '—';
       h += '<tr data-mac="'+esc(x.mac)+'">'+
-        '<td><input class="kw-devin" data-k="alias" value="'+esc(x.alias||'')+'" placeholder="'+esc(x.host||x.mac)+'">'+
-            '<div class="dom" style="margin-left:5px">'+esc(x.mac)+'</div></td>'+
+        '<td><input class="kw-devin" data-k="alias" value="'+esc(x.alias||'')+'" placeholder="'+esc(x.nick||x.host||x.mac)+'">'+
+            '<div class="dom" style="margin-left:5px">'+esc(x.mac)+
+              (x.nick && x.nick !== (x.alias||'') ? ' · 固件备注：'+esc(x.nick) : '')+'</div></td>'+
         '<td><select class="kw-devin" data-k="role">'+
             ['child','adult','guest','iot'].map(function(r){
               return '<option value="'+r+'"'+(x.role===r?' selected':'')+'>'+
