@@ -156,7 +156,7 @@
 #kw .kw-rtrack{position:relative;height:20px;border-radius:5px;background:var(--kw-well);
   box-shadow:inset 0 0 0 1px var(--kw-border)}
 #kw .kw-rsegs i{position:absolute;top:0;bottom:0;border-radius:3px;display:block}
-#kw .kw-rzero{position:absolute;top:-4px;bottom:-4px;left:20%;width:0;
+#kw .kw-rzero{position:absolute;top:-4px;bottom:-4px;left:20%;width:0;z-index:1;
   border-left:1px dashed var(--kw-dim);opacity:.5;pointer-events:none}
 #kw .kw-rcells{position:absolute;inset:0;display:flex}
 #kw .kw-rcells b{flex:1;min-width:0;cursor:crosshair}
@@ -170,6 +170,50 @@
 #kw .kw-nrailfoot .lg i{width:9px;height:9px;border-radius:2px;display:inline-block}
 #kw .kw-nrailfoot .zero{display:inline-flex;align-items:center;gap:5px}
 #kw .kw-nrailfoot .zero s{width:14px;height:0;border-top:1px dashed var(--kw-border);display:inline-block}
+
+/* 整点格 + 点开后的 10 分钟格 + 右侧域名面板 */
+#kw .kw-nsplit{display:flex;gap:18px;align-items:flex-start}
+#kw .kw-nleft{--lbl:112px;--num:76px;flex:1 1 auto;min-width:0}
+#kw .kw-hcells{position:absolute;inset:0;display:grid;
+  grid-template-columns:repeat(8,minmax(0,1fr));gap:2px;padding:2px}
+#kw .kw-hcell{appearance:none;border:0;padding:0;margin:0;background:transparent;
+  border-radius:4px;cursor:pointer;position:relative;min-width:0}
+#kw .kw-hcell i{position:absolute;inset:0;border-radius:4px;display:block}
+#kw .kw-hcell:hover{box-shadow:inset 0 0 0 1px var(--kw-dim)}
+#kw .kw-hcell.sel{box-shadow:inset 0 0 0 2px #D85A30}
+#kw .kw-trow{height:26px}
+#kw .kw-tlbl{font-size:11px;color:var(--kw-faint);padding-right:10px;text-align:right}
+#kw .kw-ttrack{position:relative;height:16px;border-radius:4px;background:var(--kw-soft);
+  box-shadow:inset 0 0 0 1px var(--kw-border)}
+#kw .kw-tcells{position:absolute;top:0;bottom:0;display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));gap:2px;padding:2px}
+#kw .kw-tcell{appearance:none;border:0;padding:0;margin:0;background:transparent;
+  border-radius:3px;cursor:crosshair;position:relative;min-width:0}
+#kw .kw-tcell i{position:absolute;inset:0;border-radius:3px;display:block}
+#kw .kw-tcell:hover{box-shadow:inset 0 0 0 1px var(--kw-dim)}
+#kw .kw-hcell.sel{box-shadow:0 0 0 2px #D85A30, 0 0 0 3px rgba(216,90,48,.28);z-index:2}
+#kw .kw-tcell.sel{box-shadow:0 0 0 2px #D85A30}
+
+#kw .kw-ndom{flex:0 0 268px;min-width:0;border-left:1px solid var(--kw-border);padding-left:16px}
+#kw .kw-ndh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+  font-size:12.5px;font-weight:600;margin-bottom:8px}
+#kw .kw-ndh i{font-style:normal;font-weight:400;font-size:11.5px;color:var(--kw-dim);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+#kw .kw-ndb{max-height:248px;overflow:auto}
+#kw .kw-ndrow{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:8px;
+  align-items:baseline;font-size:12px;line-height:1.95;border-bottom:1px solid var(--kw-soft)}
+#kw .kw-ndrow:last-child{border-bottom:0}
+#kw .kw-ndrow .t{color:var(--kw-dim);font-variant-numeric:tabular-nums}
+#kw .kw-ndrow b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#kw .kw-ndrow i{font-style:normal;color:var(--kw-dim);font-variant-numeric:tabular-nums}
+#kw .kw-nde{font-size:11.5px;color:var(--kw-faint);line-height:1.85}
+#kw .kw-ndmore{font-size:11px;color:var(--kw-faint);padding-top:6px}
+@media (max-width:920px){
+  #kw .kw-nsplit{flex-direction:column}
+  #kw .kw-ndom{flex:1 1 auto;width:100%;border-left:0;padding-left:0;margin-top:12px;
+    border-top:1px solid var(--kw-border);padding-top:12px}
+  #kw .kw-ndb{max-height:210px}
+}
 
 /* 悬停浮层：这一格到底发生了什么 */
 #kw .kw-ntip{position:fixed;z-index:9600;pointer-events:none;display:none;
@@ -531,6 +575,7 @@
         <button data-r="7d">近 7 天</button>
         <button data-r="30d">近 30 天</button>
       </div>
+      <button class="kw-btn" id="kw-theme" title="主题模式：切换浅色 / 深色">主题</button>
       <button class="kw-btn" id="kw-refresh">刷新</button>
     </div>
   </div>
@@ -648,7 +693,7 @@
         <div class="p" id="nhero-p"></div>
       </div>
       <div class="kw-nmetrics">
-        <div><span>就寝后活跃</span><b id="nhero-mins">—</b><i>22:30 之后累计</i></div>
+        <div><span>就寝后活跃</span><b id="nhero-mins">—</b><i>22:00 之后累计</i></div>
         <div><span>最晚活动</span><b id="nhero-last">—</b><i>最后一格有网</i></div>
         <div><span>异常事件</span><b id="nhero-ev">—</b><i id="nhero-ev-i">超过自己平时上限</i></div>
         <div><span>对比前 7 晚</span><b id="nhero-cmp">—</b><i id="nhero-cmp-i">夜间活跃分钟</i></div>
@@ -662,20 +707,25 @@
         <select id="night-day"></select>
         <button id="night-next" title="后一晚">›</button>
       </div>
-      <span class="kw-nwin">22:30 → 次日 06:00 · 5 分钟一格</span>
+      <span class="kw-nwin">22:00 → 次日 06:00 · 8 个整点格</span>
       <div class="kw-seg" id="night-mode">
         <button data-m="score" class="on">活跃度</button>
         <button data-m="by">流量</button>
       </div>
     </div>
 
-    <!-- 3. 一夜时间带：每台设备一条轨道，悬停看任意 5 分钟 -->
+    <!-- 3. 一夜时间带：默认 8 个整点格，点一格拆成 10 分钟，右边列出那一小时连过的域名 -->
     <section class="kw-card">
       <div class="kw-cardhead">
-        <h3>一夜时间带<span class="sub" id="night-rail-sub">谁的手机还亮着 · 鼠标停到任意一格</span></h3>
+        <h3>一夜时间带<span class="sub" id="night-rail-sub">谁的手机还亮着 · 点一小时拆成 10 分钟</span></h3>
       </div>
-      <div class="kw-nrail" id="night-rail"></div>
-      <div class="kw-nrailfoot" id="night-railfoot"></div>
+      <div class="kw-nsplit">
+        <div class="kw-nleft">
+          <div class="kw-nrail" id="night-rail"></div>
+          <div class="kw-nrailfoot" id="night-railfoot"></div>
+        </div>
+        <aside class="kw-ndom" id="night-dom"></aside>
+      </div>
     </section>
 
     <!-- 4. 事件 + 一周 -->
@@ -1349,23 +1399,27 @@
   var NIGHT = { all:[], map:{}, base:{}, slots:[], day:0, devs:[] };
   var nightMode = 'score';       // score = 活跃度 / by = 流量
 
-  // 窗口写死 22:30 → 次日 06:00（与采集端 win 表对齐），5 分钟一格 = 90 格
-  function nightRange(day){ return { a: day + 22*3600 + 1800, b: day + 86400 + 6*3600 }; }
+  // 窗口 22:00 → 次日 06:00，两头都落在整点上，正好 8 个整点格。
+  // 采集端 win 表仍是 5 分钟一条（96 条），默认按小时聚合，点开某一格再拆成 6 个 10 分钟。
+  var NHOUR = 8;
+  // 当前点开的设备 + 第几小时 + 第几个 10 分钟（k=-1 表示整小时）
+  var NSEL = { mac:'', h:-1, k:-1 };
+  function nightRange(day){ return { a: day + 22*3600, b: day + 86400 + 6*3600 }; }
   function nightSlots(day){
     var r = nightRange(day), out = [];
     for (var t = r.a; t < r.b; t += 300) out.push(t);
     return out;
   }
   function midnightOf(d){ d = new Date(d); d.setHours(0,0,0,0); return Math.floor(d.getTime()/1000); }
-  // 22:30 之前「今晚」还没开始，默认看已经结束的那一晚
+  // 22:00 之前「今晚」还没开始，默认看已经结束的那一晚
   function lastNightDay(){
     var now = new Date(), m = now.getHours()*60 + now.getMinutes(), t0 = midnightOf(now);
-    return m >= 22*60+30 ? t0 : t0 - 86400;
+    return m >= 22*60 ? t0 : t0 - 86400;
   }
   // 一条 5 分钟记录属于哪一晚（凌晨那几小时算前一天晚上）
   function nightDayOf(ts){
     var d = new Date(ts*1000), t0 = midnightOf(d), m = d.getHours()*60 + d.getMinutes();
-    return m >= 22*60+30 ? t0 : t0 - 86400;
+    return m >= 22*60 ? t0 : t0 - 86400;
   }
 
   // 活跃度分（0–100）。四个输入全部是路由器真能采到的量，没有一个是估的：
@@ -1417,20 +1471,21 @@
     return s;
   }
 
-  /* ---- 悬停浮层：这一格到底发生了什么 ---- */
+  /* ---- 悬停浮层：这一小时（或这 10 分钟）到底发生了什么 ---- */
   var ntipEl = null;
-  function nightTipHtml(name, t, w, sc, baseAir){
+  function nightTipHtml(name, t0, span, mins, by, sc, baseAir){
     var row = function(k, v){ return '<div class="tr"><span>'+k+'</span><b>'+v+'</b></div>'; };
-    var h = '<div class="th">'+esc(name)+' · '+hhmm(t)+'</div>';
-    if (!w) return h + row('状态','这一格没联网');
+    var h = '<div class="th">'+esc(name)+' · '+hhmm(t0)+'–'+hhmm(t0+span)+'</div>';
+    if (!mins && !by){
+      h += row('状态','这一段时间没联网');
+      return h;
+    }
     var col = sc>=70 ? '#D85A30' : (sc>=45 ? '#B57A0C' : (sc>0 ? '#8A8F98' : '#9ca3af'));
-    h += row('活跃度','<span style="color:'+col+'">'+sc+' 分 · '+BANDS[band(sc)]+'</span>');
-    h += row('空口占用',(w.air/1000).toFixed(1)+' 秒');
+    h += row('活跃', mins + ' 分钟 / ' + Math.round(span/60) + ' 分钟');
+    h += row('峰值活跃度','<span style="color:'+col+'">'+sc+' 分 · '+BANDS[band(sc)]+'</span>');
     if (baseAir > 0) h += row('平时上限',(baseAir/1000).toFixed(1)+' 秒');
-    h += row('活跃站点',(w.fl||0)+' 个');
-    h += row('不同域名',(w.nd||0)+' 个');
-    h += row('这一格流量',fmtBy(w.by||0));
-    if (w.ent) h += row('其中娱乐',fmtBy(w.ent));
+    h += row('流量',fmtBy(by||0));
+    h += row('明细','点这一格看域名与时间');
     return h;
   }
   function tipShow(el, html){
@@ -1452,7 +1507,7 @@
   function renderDaySelect(){
     var sel = $('#night-day');
     var t0 = midnightOf(new Date());
-    var after = (new Date().getHours()*60 + new Date().getMinutes()) >= 22*60+30;
+    var after = (new Date().getHours()*60 + new Date().getMinutes()) >= 22*60;
     if (!sel.data('built')){
       var h = '';
       for (var i=0;i<14;i++){
@@ -1669,61 +1724,112 @@
     }
   }
 
+  // 一台设备某一小时（12 个 5 分钟格）的汇总
+  function hourAgg(rc, slots, h){
+    var a = { on:0, mins:0, by:0, score:0 };
+    for (var k = h*12; k < (h+1)*12 && k < slots.length; k++){
+      var w = rc[slots[k]];
+      if (!w) continue;
+      a.by += w.by || 0;
+      var sc = score(w);
+      if (sc > a.score) a.score = sc;
+      if (slotOn(w)){ a.on++; a.mins += 5; }
+    }
+    return a;
+  }
+
+  // 流量口径的分母：所有非零格子字节数的 P95。
+  // 不能拿全局最大值 —— 一次 154MB 的突发会把其它格子全压到最浅色，
+  // 于是"切到流量视图"看起来跟活跃度一模一样，这个 bug 就是这么来的。
+  function nightByDen(map){
+    var a = [];
+    Object.keys(map).forEach(function(m){
+      var rc = map[m] || {};
+      Object.keys(rc).forEach(function(k){ var v = rc[k] && rc[k].by; if (v > 0) a.push(v); });
+    });
+    if (!a.length) return 1;
+    a.sort(function(x, y){ return x - y; });
+    return Math.max(1, a[Math.min(a.length-1, Math.floor(a.length*0.95))]);
+  }
+
+  function cellV(agg, den){
+    return nightMode === 'by' ? Math.min(1, (agg.by||0)/den) : Math.min(1, (agg.score||0)/100);
+  }
+
+  // 展开的那一行：这一小时的 6 个 10 分钟格
+  function tenRow(d, rc, slots, h, a0, den){
+    var cells = '';
+    for (var k = 0; k < 6; k++){
+      var i0 = h*12 + k*2;
+      var w1 = rc[slots[i0]], w2 = rc[slots[i0+1]];
+      var on = slotOn(w1) || slotOn(w2);
+      var sc = Math.max(score(w1), score(w2));
+      var by = ((w1 && w1.by) || 0) + ((w2 && w2.by) || 0);
+      var mins = (slotOn(w1) ? 5 : 0) + (slotOn(w2) ? 5 : 0);
+      var t = a0 + h*3600 + k*600;
+      var tsel = (NSEL.mac === d.mac && NSEL.h === h && NSEL.k === k) ? ' sel' : '';
+      cells += '<button type="button" class="kw-tcell' + (on ? ' on' : '') + tsel + '"'
+            +  ' data-mac="' + esc(d.mac) + '" data-h="' + h + '" data-k="' + k + '" data-t="' + t + '"'
+            +  ' data-mins="' + mins + '" data-by="' + by + '" data-sc="' + sc + '"'
+            +  ' aria-label="' + hhmm(t) + '">'
+            +  (on ? '<i style="background:' + hexA('#D85A30', (0.14 + cellV({by:by, score:sc}, den)*0.80).toFixed(3)) + '"></i>' : '')
+            +  '</button>';
+    }
+    // 这一行只占"被点中的那一小时"那一竖条，对齐到上面的整点格
+    var left = (h/NHOUR*100).toFixed(4), wid = (100/NHOUR).toFixed(4);
+    return '<div class="kw-rrow kw-trow">'
+         +   '<div class="kw-tlbl">10 分钟</div>'
+         +   '<div class="kw-ttrack"><div class="kw-tcells" style="left:' + left + '%;width:' + wid + '%">'
+         +     cells + '</div></div>'
+         +   '<div class="kw-rmeta"></div>'
+         + '</div>';
+  }
+
   function renderRail(day, devs, map, slots, base){
     var el = document.getElementById('night-rail');
     if (!el) return;
-    var n = slots.length;
-    var byMax = 1;
-    Object.keys(map).forEach(function(m){
-      Object.keys(map[m]).forEach(function(k){ byMax = Math.max(byMax, map[m][k].by || 0); });
-    });
+    var rng = nightRange(day);
+    var den = nightByDen(map);
 
-    // 刻度：22:30 起算，450 分钟
-    var ticks = [0, 90, 210, 330, 450];
+    // 刻度：22:00 … 06:00，9 个整点
     var th = '<div class="kw-rtick">';
-    ticks.forEach(function(mn){
-      var lbl = hhmm(day + 22*3600 + 1800 + mn*60);
-      var cls = mn === 0 ? 'e' : (mn === 450 ? 'e end' : (mn === 90 ? 'z' : ''));
-      th += '<span class="' + cls + '" style="left:' + (mn/450*100).toFixed(2) + '%">' + lbl + '</span>';
-    });
+    for (var hh = 0; hh <= NHOUR; hh++){
+      var cls = hh === 0 ? 'e' : (hh === NHOUR ? 'e end' : (hh === 2 ? 'z' : ''));
+      th += '<span class="' + cls + '" style="left:' + (hh/NHOUR*100).toFixed(2) + '%">'
+          + hhmm(rng.a + hh*3600) + '</span>';
+    }
     th += '</div>';
 
     if (!devs.length){
-      el.innerHTML = '<div class="kw-empty">这一晚没有任何设备留下记录</div>';
+      el.innerHTML = th + '<div class="kw-empty">这一晚没有任何设备留下记录</div>';
       $('#night-railfoot').html('');
+      renderNightDom();
       return;
     }
 
     var body = '';
     devs.forEach(function(d){
-      var rc = map[d.mac] || {};
-      var bars = [], cur = null, cells = '', mins = 0, lastT = 0;
-      slots.forEach(function(t, i){
-        var w = rc[t];
-        var on = slotOn(w);
-        if (on){
-          mins += 5;
-          if (t > lastT) lastT = t;
-          var v = nightMode === 'by' ? Math.min(1, (w.by||0)/byMax) : Math.min(1, score(w)/100);
-          if (cur && cur.end === i - 1){ cur.end = i; cur.v = Math.max(cur.v, v); }
-          else { cur = { start:i, end:i, v:v }; bars.push(cur); }
-        }
-        cells += '<b data-i="' + i + '" data-mac="' + esc(d.mac) + '"></b>';
-      });
-      var segs = '';
-      bars.forEach(function(b){
-        segs += '<i style="left:' + (b.start/n*100).toFixed(3) + '%;width:'
-              + ((b.end - b.start + 1)/n*100).toFixed(3) + '%;background:'
-              + hexA('#D85A30', 0.16 + b.v*0.78) + '"></i>';
-      });
+      var rc = map[d.mac] || {}, cells = '', mins = 0;
+      for (var h = 0; h < NHOUR; h++){
+        var agg = hourAgg(rc, slots, h);
+        mins += agg.mins;
+        var sel = (NSEL.mac === d.mac && NSEL.h === h) ? ' sel' : '';
+        cells += '<button type="button" class="kw-hcell' + (agg.on ? ' on' : '') + sel + '"'
+              +  ' data-mac="' + esc(d.mac) + '" data-h="' + h + '"'
+              +  ' data-mins="' + agg.mins + '" data-by="' + agg.by + '" data-sc="' + agg.score + '"'
+              +  ' aria-label="' + hhmm(rng.a + h*3600) + '">'
+              +  (agg.on ? '<i style="background:' + hexA('#D85A30', (0.14 + cellV(agg, den)*0.80).toFixed(3)) + '"></i>' : '')
+              +  '</button>';
+      }
       body += '<div class="kw-rrow">'
             +   '<div class="kw-rname" title="' + esc(devName(d)) + '">' + esc(nname(d)) + '</div>'
-            +   '<div class="kw-rtrack"><div class="kw-rsegs">' + segs + '</div>'
-            +     '<div class="kw-rzero"></div>'
-            +     '<div class="kw-rcells">' + cells + '</div></div>'
-            +   '<div class="kw-rmeta' + (mins >= 20 ? ' hot' : '') + '">'
-            +     (mins ? mins + ' 分' : '—') + '</div>'
+            +   '<div class="kw-rtrack">'
+            +     '<div class="kw-rzero" style="left:' + (2/NHOUR*100).toFixed(2) + '%"></div>'
+            +     '<div class="kw-hcells">' + cells + '</div>'
+            +   '</div>'
+            +   '<div class="kw-rmeta' + (mins >= 20 ? ' hot' : '') + '">' + (mins ? mins + ' 分' : '—') + '</div>'
             + '</div>';
+      if (NSEL.mac === d.mac && NSEL.h >= 0) body += tenRow(d, rc, slots, NSEL.h, rng.a, den);
     });
     el.innerHTML = th + body;
 
@@ -1734,28 +1840,99 @@
     ft += '<span class="zero"><s></s>0 点</span>';
     if (NIGHT.idle) ft += '<span>另有 ' + NIGHT.idle + ' 台整夜只有待机保活，未列出</span>';
     ft += '<span style="margin-left:auto">'
-        + (nightMode === 'by' ? '颜色 = 这一格流量相对大小' : '颜色 = 真的在用，不是流量大小')
+        + (nightMode === 'by'
+            ? '颜色 = 这一小时流量（按 P95 归一，不取最大值）'
+            : '颜色 = 这一小时里最活跃的那 5 分钟')
         + '</span>';
     $('#night-railfoot').html(ft);
+    renderNightDom();
 
     if (!el.__bound){
       el.__bound = 1;
       el.addEventListener('mouseover', function(e){
-        var c = e.target.closest ? e.target.closest('b[data-i]') : null;
+        var c = e.target.closest ? e.target.closest('.kw-hcell,.kw-tcell') : null;
         if (!c) return;
-        var i = +c.getAttribute('data-i'), mac = c.getAttribute('data-mac');
-        var rc = NIGHT.map[mac] || {};
-        var t = NIGHT.slots[i];
-        var w = rc[t];
+        var mac = c.getAttribute('data-mac');
         var dv = null;
         (NIGHT.devs || []).forEach(function(x){ if (x.mac === mac) dv = x; });
-        tipShow(c, nightTipHtml(dv ? nname(dv) : mac, t, w, w ? score(w) : 0, NIGHT.base[mac] || 0));
+        var isHour = c.classList.contains('kw-hcell');
+        var t0 = isHour ? NIGHT.day + 22*3600 + (+c.getAttribute('data-h'))*3600
+                        : (+c.getAttribute('data-t'));
+        tipShow(c, nightTipHtml(dv ? nname(dv) : mac, t0, isHour ? 3600 : 600,
+                                +c.getAttribute('data-mins') || 0,
+                                +c.getAttribute('data-by') || 0,
+                                +c.getAttribute('data-sc') || 0,
+                                NIGHT.base[mac] || 0));
       });
       el.addEventListener('mouseout', function(e){
-        var c = e.target.closest ? e.target.closest('b[data-i]') : null;
+        var c = e.target.closest ? e.target.closest('.kw-hcell,.kw-tcell') : null;
         if (c) tipHide();
       });
+      el.addEventListener('click', function(e){
+        var c = e.target.closest ? e.target.closest('.kw-hcell,.kw-tcell') : null;
+        if (!c) return;
+        var mac = c.getAttribute('data-mac'), h = +c.getAttribute('data-h');
+        if (c.classList.contains('kw-tcell')){
+          var k = +c.getAttribute('data-k');
+          // 点同一个 10 分钟格 = 退回整小时
+          NSEL = (NSEL.mac === mac && NSEL.h === h && NSEL.k === k)
+               ? { mac:mac, h:h, k:-1 } : { mac:mac, h:h, k:k };
+          tipHide();
+          renderRail(NIGHT.day, NIGHT.devs, NIGHT.map, NIGHT.slots, NIGHT.base);
+          return;
+        }
+        NSEL = (NSEL.mac === mac && NSEL.h === h) ? { mac:'', h:-1, k:-1 } : { mac:mac, h:h, k:-1 };
+        tipHide();
+        renderRail(NIGHT.day, NIGHT.devs, NIGHT.map, NIGHT.slots, NIGHT.base);
+      });
     }
+  }
+
+  // 右侧面板：点中的那台设备、那一小时里连过的域名与起止时间。
+  // 数据来自 sess 表（采集端每次轮询写一条 域名 + ts0/ts1），
+  // 所以这里能看到"01:12 开始连 douyinvod.com、持续 3 分钟"这种颗粒。
+  var NDOMSEQ = 0;
+  function renderNightDom(){
+    var box = document.getElementById('night-dom');
+    if (!box) return;
+    if (!NSEL.mac || NSEL.h < 0){
+      box.innerHTML = '<div class="kw-ndh">这一小时连了哪些站</div>'
+        + '<div class="kw-nde">点左边任意一格<br>这里列出这台设备在那 60 分钟里连过的域名、起始时间和时长。</div>';
+      return;
+    }
+    var span = NSEL.k >= 0 ? 600 : 3600;
+    var t0 = NIGHT.day + 22*3600 + NSEL.h*3600 + (NSEL.k >= 0 ? NSEL.k*600 : 0);
+    var dv = null;
+    (NIGHT.devs || []).forEach(function(x){ if (x.mac === NSEL.mac) dv = x; });
+    var who = dv ? nname(dv) : NSEL.mac;
+    box.innerHTML = '<div class="kw-ndh">' + esc(who)
+                  + '<i>' + hhmm(t0) + '–' + hhmm(t0+span) + '</i></div>'
+                  + '<div class="kw-ndb"><div class="kw-nde" style="padding:10px 0">读取中…</div></div>';
+    var seq = ++NDOMSEQ;
+    api({fn:'sesswin', mac:NSEL.mac, from:t0, to:t0+span}, function(e, rows){
+      if (seq !== NDOMSEQ) return;          // 又点了别的格子，丢掉这次的结果
+      rows = rows || [];
+      var b = box.querySelector('.kw-ndb');
+      if (!b) return;
+      if (!rows.length){
+        b.innerHTML = '<div class="kw-nde" style="padding:12px 0">这段时间没有域名明细<br>'
+                    + '设备离线、或只在后台保活时就没有记录</div>';
+        return;
+      }
+      var lim = Math.min(rows.length, 40), h = '';
+      for (var i = 0; i < lim; i++){
+        var x = rows[i], nm = String(x.dom || '').replace(/^www\./, '');
+        h += '<div class="kw-ndrow" title="' + esc(x.dom) + '">'
+           +   '<span class="t num">' + hhmm(x.t0) + '</span>'
+           +   '<b>' + esc(nm) + '</b>'
+           +   '<i class="num">' + fmtDur(x.dur) + '</i>'
+           + '</div>';
+      }
+      if (rows.length > lim) h += '<div class="kw-ndmore">另有 ' + (rows.length - lim) + ' 个域名未显示</div>';
+      b.innerHTML = h;
+      var hd = box.querySelector('.kw-ndh i');
+      if (hd) hd.textContent = hhmm(t0) + '–' + hhmm(t0+span) + ' · ' + rows.length + ' 个域名';
+    });
   }
 
   function renderEvents(day, evs, base){
@@ -2098,7 +2275,7 @@
     var rl = {today:'今天',yesterday:'昨天','7d':'近 7 天','30d':'近 30 天'}[r] || r;
     $('#kw-hint').text(
       S.tab === 'sys'   ? '整机指标 · 每 60 秒采集一次' :
-      S.tab === 'night' ? '判定的是「真的在用」，不是流量大小 · 每晚 22:30 → 06:00' :
+      S.tab === 'night' ? '判定的是「真的在用」，不是流量大小 · 每晚 22:00 → 06:00' :
                           rl + ' · ' + macLabel + ' · 数据每 10 秒采集一次');
     if (S.tab === 'ov') loadOverview();
     if (S.tab === 'web'){ loadSideDevs(); loadWeb(); }
@@ -2217,7 +2394,48 @@
     tipHide();
   });
 
+  /* ---- 主题模式 ----
+     固件把 data-darkmode 写在 <html> 上（header.ut 读 fwx.global.theme_mode，
+     再被 prefers-color-scheme 覆盖一次），整套 cascade.css 都按这个属性取值，
+     所以改属性 = 全站即时换肤，不用刷新。
+     同时写回 uci，这样翻到后台别的页面也是新的模式。 */
+  var CHART_IDS = ['ov-hours', 'sys-detail', 'sys-cpu', 'sys-temp', 'sys-mem'];
+  function themeIsDark(){
+    var a = document.documentElement.getAttribute('data-darkmode')
+         || document.body.getAttribute('data-darkmode');
+    return a === 'true';
+  }
+  function themePaint(dark){
+    document.documentElement.setAttribute('data-darkmode', dark ? 'true' : 'false');
+    var b = document.getElementById('kw-theme');
+    if (b){
+      b.textContent = dark ? '深色' : '浅色';
+      b.setAttribute('aria-pressed', dark ? 'true' : 'false');
+    }
+  }
+  function themeSet(dark, silent){
+    themePaint(dark);
+    try { localStorage.setItem('kw.theme', dark ? 'dark' : 'light'); } catch(e){}
+    // 图表颜色是绘制时取的（ink/dim/line），不重画就还是旧主题的灰阶
+    CHART_IDS.forEach(function(id){
+      var el = document.getElementById(id);
+      var c = el && window.echarts ? echarts.getInstanceByDom(el) : null;
+      if (c) c.dispose();
+    });
+    hoursChart = null; detailChart = null;
+    if (silent) return;
+    refresh();
+    api({fn:'theme', v: dark ? 1 : 0}, function(){});
+  }
+  $('#kw-theme').on('click', function(){ themeSet(!themeIsDark()); });
+
   // 启动
+  // 先按记住的偏好把主题摆好再画图，否则第一屏图表会用旧主题的灰阶
+  try {
+    var _t = localStorage.getItem('kw.theme');
+    if (_t) themePaint(_t === 'dark');
+  } catch(e){}
+  themePaint(themeIsDark());
   applyTab(S.tab);
   renderCatSide();
   if (S.webView !== 'app') fillCatSide();   // 应用视角由 loadWebApps 自己统计

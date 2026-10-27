@@ -296,6 +296,21 @@ q_sess() {
 	    ORDER BY ts0 LIMIT 400;"
 }
 
+# 某个时间窗内（通常是某一小时）这台设备连过哪些域名，按开始时间排。
+# 夜间时间带点开一格就用它：家长要看到的是"1 点这小时它连了哪几个站、各多久"。
+# ts0/ts1 两头夹到窗口边界，免得显示成 00:50–01:10 这种跨格区间。
+q_sesswin() {
+	A=${F:-0}; B=${T:-0}
+	[ "$A" -gt 0 ] 2>/dev/null || return 0
+	[ "$B" -gt "$A" ] 2>/dev/null || return 0
+	MF=""; [ -n "${M:-}" ] && MF="AND mac='$(sq "$M")'"
+	sj "SELECT dom,
+	           MAX(ts0,$A) AS t0, MIN(ts1,$B) AS t1,
+	           SUM(dur) AS dur, SUM(n) AS n
+	    FROM sess WHERE ts1>$A AND ts0<$B $MF
+	    GROUP BY dom ORDER BY MIN(ts0) LIMIT 120;"
+}
+
 q_devs() {
 	D=$(nmid "$(date +%Y-%m-%d)")
 	# 设备清单以固件为准（devlive 来自 fwx 的 get_all_users / visit_list），
@@ -325,11 +340,13 @@ q_devs() {
 # TOD 把 ts 换算成"当日秒数"，负数取模要补一圈，否则前一天 23 点会被漏掉。
 # 注意：DAY 在参数解析后才赋值，所以表达式必须在函数内部拼。
 tod_expr() { echo "((((ts - $DAY) % 86400) + 86400) % 86400)"; }
-night_expr() { local t; t=$(tod_expr); echo "($t >= 81000 OR $t < 21600)"; }
+# 夜间窗口 22:00 → 次日 06:00。原来从 22:30 起算，前端改按整点分格后
+# 半小时的首格没有意义，边界跟着整点走（采集端 win 表本身是 5 分钟一格，不受影响）。
+night_expr() { local t; t=$(tod_expr); echo "($t >= 79200 OR $t < 21600)"; }
 
 q_night() {
 	N=${NDAYS:-1}
-	A=$((DAY + 22*3600 + 1800 - (N-1)*86400))
+	A=$((DAY + 22*3600 - (N-1)*86400))
 	B=$((DAY + 86400 + 6*3600))
 	MF=""; [ -n "${M:-}" ] && MF="AND mac='$(sq "$M")'"
 	sj "SELECT ts, mac, air, on_s, fl, dq, by, ent, nd FROM win
@@ -480,6 +497,7 @@ case "$cmd" in
 			days)     q_days ;;
 			list)     q_list ;;
 			sess)     q_sess ;;
+			sesswin)  q_sesswin ;;
 			devs)     q_devs ;;
 			night)    q_night ;;
 			base)     q_base ;;

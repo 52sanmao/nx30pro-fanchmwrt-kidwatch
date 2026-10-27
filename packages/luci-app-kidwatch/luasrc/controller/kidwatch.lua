@@ -194,7 +194,7 @@ end
 
 local FN = {
 	overview = true, top = true, cats = true, hours = true, days = true,
-	list = true, sess = true, devs = true, night = true, base = true,
+	list = true, sess = true, sesswin = true, devs = true, night = true, base = true,
 	sys = true, stat = true, sites = true,
 }
 
@@ -271,6 +271,24 @@ function api()
 			cmd = cmd .. "setsite " .. dom .. " " .. q(val) .. " " .. (cat or "other")
 		end
 		luci.http.write(luci.util.exec(cmd) or "{}")
+		return
+	end
+
+	-- 主题模式：写 fwx.global.theme_mode。
+	-- 主题模板 header.ut 按这个值渲染 <html data-darkmode>，所以写进去以后
+	-- 不只是本页，整个后台下次渲染都会跟着变；本页则先改属性即时生效。
+	if fn == "theme" then
+		if not luci.dispatcher.context.authsession then
+			luci.http.write('{"error":"auth"}')
+			return
+		end
+		local v = luci.http.formvalue("v") or ""
+		if v ~= "0" and v ~= "1" then
+			luci.http.write('{"error":"args"}')
+			return
+		end
+		luci.util.exec("uci set fwx.global.theme_mode=" .. v .. " >/dev/null 2>&1; uci commit fwx >/dev/null 2>&1")
+		luci.http.write('{"ok":true,"v":' .. v .. '}')
 		return
 	end
 
