@@ -567,11 +567,6 @@
 #kw .kwdm .kw-note{margin:12px 18px 6px}
 #kw .kwdm-body{overflow:auto;padding:0 18px 18px}
 #kw .kwdm-body .kw-tbl{width:100%}
-/* 设备表最后一列：改名之外还得能删 */
-#kw .kw-del{appearance:none;border:1px solid var(--kw-border);background:transparent;
-  color:var(--kw-dim);border-radius:5px;font-size:11.5px;padding:3px 8px;cursor:pointer;
-  white-space:nowrap}
-#kw .kw-del:hover{color:#D85A30;border-color:#D85A30;background:rgba(216,90,48,.08)}
 @media (max-width:860px){
   #kw .kwdm-box{width:96vw;max-height:88vh}
   #kw .kwdm-body{padding:0 10px 12px}
@@ -2126,8 +2121,8 @@
   function renderDevTable(rows){
     var h = '<thead><tr><th>设备</th><th>角色</th><th>统计</th>'+
             '<th class="r">今日时长</th><th class="r">今日流量</th><th class="r">最后活动</th>'+
-            '<th class="r">操作</th></tr></thead><tbody>';
-    if (!rows.length){ h += '<tr><td colspan="7" class="kw-empty">还没有任何设备记录</td></tr>'; }
+            '</tr></thead><tbody>';
+    if (!rows.length){ h += '<tr><td colspan="6" class="kw-empty">还没有任何设备记录</td></tr>'; }
     rows.forEach(function(x){
       var last = x.last ? hhmm(x.last) : '—';
       h += '<tr data-mac="'+esc(x.mac)+'">'+
@@ -2146,24 +2141,9 @@
             }).join('')+'</select></td>'+
         '<td class="r num">'+fmtDur(x.dur)+'</td>'+
         '<td class="r num">'+fmtBy(devBy(x.mac))+'</td>'+
-        '<td class="r num">'+last+'</td>'+
-        '<td class="r"><button class="kw-del" data-del="'+esc(x.mac)+'" title="删除这台设备的记录">删除</button></td></tr>';
+        '<td class="r num">'+last+'</td></tr>';
     });
     $('#dev-tbl').html(h + '</tbody>');
-    // 删除：只删我们自己的记录，不动固件。设备还在线的话下轮采样会回来，
-    // 所以确认框里把这条说清楚，并提示"长期不显示"要用「忽略」。
-    $('#dev-tbl').off('click', '.kw-del').on('click', '.kw-del', function(){
-      var mac = $(this).data('del'), tr = $(this).closest('tr');
-      var nm = tr.find('.kw-devin[data-k=alias]').val() || tr.find('.dom').text().split(' ')[0] || mac;
-      if (!confirm('删除「' + nm + '」的全部记录？\n\n'
-          + '· 别名、每日时长、域名明细、夜间采样会一并清掉，不可恢复\n'
-          + '· 如果它还在线，下一次采样（约 3 分钟）会重新出现\n'
-          + '· 想让它长期不显示，把「统计」设为「忽略」，而不是删掉')) return;
-      api({fn:'setdev', mac:mac, key:'del', val:''}, function(){
-        openDevSet();
-        if (S.tab === 'web') loadSideDevs();
-      });
-    });
     $('#dev-tbl :input').on('change', function(){
       var tr = $(this).closest('tr'), mac = tr.data('mac');
       var k = $(this).data('k'), v = $(this).val();

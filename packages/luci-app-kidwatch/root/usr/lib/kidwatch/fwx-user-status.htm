@@ -221,12 +221,15 @@
 			applyCapabilityColumnVisibility();
 			apply_view_mode();
 			loadAppClassNameMap();
-			loadSystemBaseInfo(function() {
-				getAllUsersData(cur_page);
-				setInterval(function() {
-					console.log("get user data");
+			/* 先把"已删除"清单拿到再画第一屏，避免已删除的设备闪一下又消失 */
+			kwLoadHid().then(function () {
+				loadSystemBaseInfo(function() {
 					getAllUsersData(cur_page);
-				}, 3000);
+					setInterval(function() {
+						console.log("get user data");
+						getAllUsersData(cur_page);
+					}, 3000);
+				});
 			});
 		});
 
@@ -239,6 +242,97 @@
 				$modal.css('display', 'none');
 			}, 1000);
 		}
+
+		/* ---------------------------------------------------------------
+		   删除终端（家长看板那一侧的动作，不动固件的数据）
+
+		   固件的终端列表是它自己从 DHCP/关联表拼出来的，没有"删除设备"的接口；
+		   我们能做的是：把 kidwatch 里这台设备的历史清掉、以后不再采集它，
+		   并且在这一页把这一行滤掉。删除清单存在 kidwatch 的 devhide 表里，
+		   所以刷新、换浏览器都还在，点「已删除 N 台」可以一次性恢复。
+		   --------------------------------------------------------------- */
+		var KW_HID = {};          /* mac -> 1，已删除 */
+		var KW_HID_N = 0;
+
+		function kwApi(params) {
+			var qs = Object.keys(params).map(function (k) {
+				return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+			}).join('&');
+			return fetch('<%=url("admin/kidwatch_api/call")%>?' + qs, {credentials: 'same-origin'})
+				.then(function (r) { return r.text(); })
+				.then(function (t) { try { return JSON.parse(t); } catch (e) { return null; } });
+		}
+
+		function kwLoadHid() {
+			return kwApi({fn: 'hid'}).then(function (rows) {
+				KW_HID = {};
+				KW_HID_N = 0;
+				(rows || []).forEach(function (r) {
+					if (r && r.mac) { KW_HID[r.mac] = 1; KW_HID_N++; }
+				});
+				render_hid_bar();
+			}).catch(function () { /* kidwatch 没装/没起来时不影响这一页 */ });
+		}
+
+		function render_hid_bar() {
+			var $bar = $('#kw-hid-bar');
+			if (!$bar.length) return;
+			if (!KW_HID_N) { $bar.hide().text(''); return; }
+			$bar.text('已删除 ' + KW_HID_N + ' 台 · 点此恢复').show();
+		}
+
+		/* 确认框里要写用户眼前看到的那行名字，而不是内部字段。
+		   顺序：行首单元格的文字（= 屏幕上显示的，可能是别名/主机名/厂商+MAC）
+		   → 接口里的 nickname/hostname → 裸 MAC。 */
+		function kwNameOf(mac, btn) {
+			try {
+				var tr = btn && btn.closest && btn.closest('tr');
+				if (tr && tr.children.length) {
+					var t = (tr.children[0].innerText || '').split('\n')[0].trim();
+					/* 没有别名也没有主机名时单元格就是 "--"，这种时候直接报 MAC 更有用 */
+					if (t && t !== '--' && t !== '-' && t !== 'null') return t;
+				}
+			} catch (e) { /* 卡片视图没有 tr，落到下面 */ }
+			var list = (user_list_data && user_list_data.list) || [];
+			for (var i = 0; i < list.length; i++) {
+				if (list[i].mac === mac) {
+					return (list[i].nickname || list[i].hostname || mac);
+				}
+			}
+			return mac;
+		}
+
+		function kwDelDev(mac, btn) {
+			if (!mac) return;
+			var name = kwNameOf(mac, btn);
+			var msg = '删除「' + name + '」？\n\n'
+				+ '· 这台设备在今天、夜间时间带、上网详单里的记录都会被清空\n'
+				+ '· 之后不再统计它（重新联网也不会自动回来）\n'
+				+ '· 不影响它的正常上网，也不动路由器自己的终端记录\n\n'
+				+ '删错了可以点列表右上角的「已删除 N 台 · 点此恢复」。';
+			if (!confirm(msg)) return;
+			kwApi({fn: 'setdev', mac: mac, key: 'del', val: ''}).then(function (r) {
+				if (!r || r.ok !== true) {
+					alert('删除失败：' + JSON.stringify(r));
+					return;
+				}
+				KW_HID[mac] = 1;
+				KW_HID_N++;
+				render_hid_bar();
+				getAllUsersData(cur_page);   /* 立刻重画，不用等 3 秒轮询 */
+			}).catch(function (e) { alert('删除失败：' + e); });
+		}
+
+		function kwRestoreHid() {
+			if (!KW_HID_N) return;
+			if (!confirm('恢复全部 ' + KW_HID_N + ' 台已删除的终端？\n（它们会重新出现在列表里，历史记录不会回来）')) return;
+			kwApi({fn: 'setdev', mac: '*', key: 'undel', val: ''}).then(function (r) {
+				if (!r || r.ok !== true) { alert('恢复失败：' + JSON.stringify(r)); return; }
+				kwLoadHid().then(function () { getAllUsersData(cur_page); });
+			}).catch(function (e) { alert('恢复失败：' + e); });
+		}
+
+		$(document).on('click', '#kw-hid-bar', kwRestoreHid);
 
 		function toggleBlacklist(mac, inBlacklist) {
 			if (!inBlacklist && !confirm('<%:Are you sure you want to join the blacklist? After joining, this terminal will be disconnected from the Internet.%>')) {
@@ -805,6 +899,8 @@
 					var nickname = (user_list[i].nickname || "").trim();
 					var hostname = (user_list[i].hostname || "").trim();
 					var mac = user_list[i].mac || "--";
+					// 用户点过"删除"的终端：固件那边还报着它，这一页按用户的意图滤掉
+					if (KW_HID[mac]) { continue; }
 					var list_display_name = nickname || hostname || "--";
 					var list_full_name = list_display_name;
 					var list_truncated_name = truncateDeviceName(list_display_name, 16);
@@ -893,6 +989,7 @@
 						<td class="td">
 							<button type="button" class="cbi-button cbi-button-add" onclick="window.location.href='<%=url("admin/fwx_user/detail")%>?mac=' + encodeURIComponent('${user_list[i].mac}')" style="margin-right: 5px;"><%:Detail%></button>
 							<button type="button" class="${blacklistClass}" onclick="toggleBlacklist('${user_list[i].mac}', ${inBlacklist ? 1 : 0})">${blacklistText}</button>
+							<button type="button" class="cbi-button kw-dev-del" onclick="kwDelDev('${user_list[i].mac}', this)" style="margin-left: 5px;" title="Remove from this list and delete its history"><%:Delete%></button>
 						</td>
 					`);
 					$tb.append($tr);
@@ -943,6 +1040,7 @@
 							<div class="user-card-actions">
 								<button type="button" class="cbi-button cbi-button-add" onclick="window.location.href='<%=url("admin/fwx_user/detail")%>?mac=' + encodeURIComponent('${user_list[i].mac}')"><%:Detail%></button>
 								<button type="button" class="${blacklistClass}" onclick="toggleBlacklist('${user_list[i].mac}', ${inBlacklist ? 1 : 0})">${blacklistText}</button>
+								<button type="button" class="cbi-button kw-dev-del" onclick="kwDelDev('${user_list[i].mac}', this)"><%:Delete%></button>
 							</div>
 						</div>
 					`);
@@ -1430,6 +1528,7 @@
 			<button type="button" id="view_mode_card_btn" class="view-mode-btn" data-mode="card" title="Card Mode" aria-label="Card Mode">
 				<span class="view-mode-icon view-mode-icon-card"></span>
 			</button>
+			<button type="button" id="kw-hid-bar" class="kw-hid-bar" style="display:none;"></button>
 		</div>
 
 		<div id="user_table_wrapper" class="user-table-wrapper">
@@ -1472,7 +1571,7 @@
 					<th class="th" style="width: 55px;">
 						<%:Online Status%>
 					</th>
-					<th class="th" style="width: 150px;">
+					<th class="th" style="width: 170px;">
 						<%:Actions%>
 				</th>
 			</tr>
@@ -1882,7 +1981,24 @@
 		display: none !important;
 	}
 
-	/* 操作列吸右：13 列在 1366 屏上必然横向溢出，按钮不再被推到屏幕外 */
+	/* 操作列三个按钮（详情/拉黑/删除），收紧内边距才塞得进 210px */
+	#user_status_table td:last-child .cbi-button {
+		padding: 3px 9px !important;
+		font-size: 12px !important;
+		min-width: 0 !important;
+		line-height: 1.4 !important;
+	}
+
+	/* 操作列吸右：13 列在 1366 屏上必然横向溢出，按钮不再被推到屏幕外。
+
+	   ⚠️ 表格自己身上有 overflow:hidden（主题给的），而 sticky 是相对"最近的
+	   滚动容器"定位的 —— 表格不滚动，right:0 就等于右边缘贴着表格自己的右侧，
+	   按钮照样被推到 1440 屏外。必须让表格回到 visible，把滚动交给外层
+	   #user_table_wrapper（overflow-x:auto），吸右才真的生效。 */
+	#user_status_table {
+		overflow: visible !important;
+	}
+
 	#user_status_table th:last-child,
 	#user_status_table td:last-child {
 		position: sticky;
@@ -2185,6 +2301,40 @@
 		background: #dc2626 !important;
 		border-color: #b91c1c !important;
 		color: #fff !important;
+	}
+
+	/* 删除：拉黑是红的，删除就不能再用红色，否则两个按钮看起来一个意思 */
+	.kw-dev-del {
+		background: transparent !important;
+		border: 1px solid var(--border-color, #d1d5db) !important;
+		color: var(--text-color-medium, #6b7280) !important;
+	}
+
+	.kw-dev-del:hover {
+		border-color: #ef4444 !important;
+		color: #ef4444 !important;
+		background: rgba(239, 68, 68, .08) !important;
+	}
+
+	[data-darkmode="true"] .kw-dev-del {
+		border-color: rgba(255, 255, 255, .22) !important;
+		color: #9ca3af !important;
+	}
+
+	.kw-hid-bar {
+		margin-left: auto;
+		padding: 3px 10px;
+		border-radius: 999px;
+		border: 1px dashed var(--border-color, #d1d5db);
+		background: transparent;
+		color: var(--text-color-medium, #6b7280);
+		font-size: 12px;
+		cursor: pointer;
+	}
+
+	.kw-hid-bar:hover {
+		border-color: #60a5fa;
+		color: #3b82f6;
 	}
 
 	@media (max-width: 768px) {

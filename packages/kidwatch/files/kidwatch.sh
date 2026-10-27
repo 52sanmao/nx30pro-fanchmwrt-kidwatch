@@ -60,6 +60,13 @@ CREATE TABLE IF NOT EXISTS site(
 );
 CREATE INDEX IF NOT EXISTS i_site_cat ON site(cat);
 
+-- 用户"删除"掉的终端。固件那边的终端列表自己管着，我们不碰它的数据，
+-- 只在采集与展示时把这几台滤掉；设备重新联网也不会自动回来，要显式恢复。
+CREATE TABLE IF NOT EXISTS devhide(
+  mac TEXT PRIMARY KEY,
+  ts  INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS sess(
   id INTEGER PRIMARY KEY,
   mac TEXT NOT NULL, dom TEXT NOT NULL DEFAULT '', day INTEGER NOT NULL,
@@ -429,6 +436,9 @@ q_sites() {
 	sj "SELECT dom,name,cat,src FROM site $W ORDER BY src DESC, dom LIMIT $L;"
 }
 
+# 终端列表页要滤掉的设备（用户点过"删除"的）
+q_hid() { sj "SELECT mac,ts FROM devhide ORDER BY ts DESC;"; }
+
 # ---------------------------------------------------------------- 写入
 do_setdev() {
 	do_init >/dev/null 2>&1
@@ -441,9 +451,16 @@ do_setdev() {
 		mode)  se "INSERT INTO dev(mac,mode)  VALUES('$MAC','$V') ON CONFLICT(mac) DO UPDATE SET mode='$V';" ;;
 		# 删除这台设备的全部痕迹。devlive 也要删，否则"设备清单以固件为准"
 		# 那一支会立刻把它从 devlive 重新拼出来，看着像没删掉。
+		# 同时记进 devhide：终端列表那一页的行来自固件（get_all_users），
+		# 我们不删固件的数据，但要把这一行从列表里滤掉，并且采样时跳过它，
+		# 否则三分钟后它又带着新数据回来了。恢复用 undel。
 		del)   se "DELETE FROM dev WHERE mac='$MAC'; DELETE FROM devlive WHERE mac='$MAC';
 		           DELETE FROM sess WHERE mac='$MAC'; DELETE FROM daily WHERE mac='$MAC';
-		           DELETE FROM win WHERE mac='$MAC'; DELETE FROM devday WHERE mac='$MAC';" ;;
+		           DELETE FROM win WHERE mac='$MAC'; DELETE FROM devday WHERE mac='$MAC';
+		           INSERT INTO devhide(mac,ts) VALUES('$MAC',$(now))
+		             ON CONFLICT(mac) DO UPDATE SET ts=excluded.ts;" ;;
+		undel) if [ "$MAC" = "*" ]; then se "DELETE FROM devhide;"
+		       else se "DELETE FROM devhide WHERE mac='$MAC';"; fi ;;
 		*) return ;;
 	esac
 	echo '{"ok":true}'
@@ -544,6 +561,7 @@ case "$cmd" in
 			sys)      q_sys ;;
 			stat)     q_stat ;;
 			sites)    q_sites ;;
+			hid)      q_hid ;;
 			*) echo '{"error":"unknown"}' ;;
 		esac
 		;;
@@ -557,5 +575,5 @@ case "$cmd" in
 	          KWDB="$DB" lua /usr/lib/kidwatch/poll.lua --reclass ;;
 	maint)    do_maint ;;
 	rotate)   do_rotate "${1:-}" ;;
-	*) echo "usage: kidwatch {init|poll|collect|query|setdev|setsite|sites|maint|rotate}" ;;
+	*) echo "usage: kidwatch {init|poll|collect|query|setdev|setsite|sites|reclass|maint|rotate}" ;;
 esac

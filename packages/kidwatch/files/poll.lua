@@ -365,6 +365,19 @@ do
   end
 end
 
+-- 用户点过"删除"的终端：固件还在报它们，但我们既不记也不再建条目。
+-- 只读一次，后面三个循环都拿它过滤（站点、在线快照、日流量）。
+local hidden = {}
+do
+  local p = io.popen("sqlite3 '" .. DB .. "' \"SELECT mac FROM devhide\" 2>/dev/null")
+  if p then
+    for line in p:lines() do
+      if line ~= "" then hidden[line] = true end
+    end
+    p:close()
+  end
+end
+
 -- 第一遍：按设备把本轮的活跃站点归并起来。
 -- 关键：一轮 10 分钟是"设备的 10 分钟"，不是"每个域名的 10 分钟"。
 -- 若每个域名都记满 IV，一天下来能算出 50 多个小时，这种数没人信。
@@ -374,7 +387,7 @@ for _, h in ipairs(hosts) do
   local host = raw ~= "" and root(raw) or ""
   -- 同一站点每轮只记一次：手机上 10 条连接不等于用了 10 倍时间
   local key = mac .. "|" .. host
-  if mac ~= "" and host ~= "" and not seen[key] then
+  if mac ~= "" and host ~= "" and not seen[key] and not hidden[mac] then
     seen[key] = true
     local aid = lookup(raw) or lookup(host)
     local nm, cat = "", ""
@@ -506,6 +519,9 @@ do
     end
   end
   for m in pairs(bu) do
+    if hidden[m] then bu[m] = nil end
+  end
+  for m in pairs(bu) do
     -- 这里必须用 %.0f 而不是 %d：本机 Lua 是 5.1（double），string.format("%d")
     -- 只认 C 的 int，字节数一旦超过 2^31 就抛 "integer expected, got number"，
     -- 整轮采样直接崩掉（踩过一次，别改回去）。
@@ -522,7 +538,7 @@ local ENT = { video = 1, game = 1, social = 1, music = 1, novel = 1 }
 -- 候选设备 = 本轮在线的 + 本轮有活跃站点的 + 无线有 airtime 增量的
 local cand, ncan = {}, 0
 local function add(mac)
-  if mac ~= "" and not cand[mac] then cand[mac] = true; ncan = ncan + 1 end
+  if mac ~= "" and not hidden[mac] and not cand[mac] then cand[mac] = true; ncan = ncan + 1 end
 end
 for mac in pairs(online) do if online[mac] == 1 then add(mac) end end
 for _, mac in ipairs(order) do add(mac) end
@@ -582,7 +598,7 @@ end
 -- 设备在线快照：即使本轮没有任何活跃连接，也要更新"下线"状态
 for _, u in ipairs(ulist) do
   local mac = esc(u.mac)
-  if mac ~= "" then
+  if mac ~= "" and not hidden[mac] then
     sql[#sql + 1] = string.format(
       "INSERT INTO devlive(mac,host,ip,ip6,online,wl,ts) VALUES('%s','%s','%s','%s',%d,%d,%d) " ..
       "ON CONFLICT(mac) DO UPDATE SET host=excluded.host, ip=excluded.ip, ip6=excluded.ip6, " ..

@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-kidwatch
-PKG_VERSION:=1.3.4
+PKG_VERSION:=1.3.5
 PKG_RELEASE:=1
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=52sanmao <52sanmao@users.noreply.github.com>
@@ -36,7 +36,9 @@ define Package/luci-app-kidwatch/description
   And a patched device-list page: the Signal / Session columns are hidden by
   a single table-level class shared by <th> and <td> (they used to be toggled
   independently, so the whole table shifted two columns to the left), plus
-  offline MAC OUI vendor lookup, device-type icons and inline renaming.
+  offline MAC OUI vendor lookup, device-type icons, inline renaming, and a
+  Delete action that drops the device (and its guardian history) from the
+  list; deleted devices stay hidden until restored from the same page.
 endef
 
 define Build/Compile

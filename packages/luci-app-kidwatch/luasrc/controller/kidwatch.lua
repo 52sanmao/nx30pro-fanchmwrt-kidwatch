@@ -210,6 +210,8 @@ local FN = {
 	overview = true, top = true, cats = true, hours = true, days = true,
 	list = true, sess = true, sesswin = true, devs = true, night = true, base = true,
 	sys = true, stat = true, sites = true,
+	-- 终端列表页要滤掉的设备（用户点过"删除"的），只有 mac+ts 两列
+	hid = true,
 }
 
 local function safe_num(v)
@@ -272,9 +274,13 @@ function api()
 			luci.http.write('{"error":"auth"}')
 			return
 		end
-		local mac = safe_mac(luci.http.formvalue("mac") or "")
+		local macraw = luci.http.formvalue("mac") or ""
+		local mac = safe_mac(macraw)
 		local key = safe_word(luci.http.formvalue("key") or "")
 		local val = luci.http.formvalue("val") or ""
+		-- 恢复全部已删除的终端用 mac=*。这里必须单引号包起来再交给 shell，
+		-- 否则 '*' 会在路由器上被当成通配符展开成文件名。
+		if macraw == "*" and key == "undel" then mac = "'*'" end
 		if fn == "setdev" then
 			if not mac or not key then luci.http.write('{"error":"args"}') return end
 			cmd = cmd .. "setdev " .. mac .. " " .. key .. " " .. q(val)
