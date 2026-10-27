@@ -854,7 +854,9 @@
     s = Math.round(s||0);
     if (s < 60) return s + ' 秒';
     if (s < 3600) return Math.floor(s/60) + ' 分' + (s%60 ? ' ' + (s%60) + ' 秒' : '');
+    // 余数超过 59.5 分时 round 会给出 60：必须进位，否则出现"26 小时 60 分钟"
     var h = Math.floor(s/3600), m = Math.round((s%3600)/60);
+    if (m >= 60) { h += 1; m = 0; }
     return h + ' 小时' + (m ? ' ' + m + ' 分' : '');
   }
   function fmtH(s){
@@ -862,6 +864,7 @@
     if (s < 60) return s + 's';
     if (s < 3600) return Math.round(s/60) + 'm';
     var h = Math.floor(s/3600), m = Math.round((s%3600)/60);
+    if (m >= 60) { h += 1; m = 0; }
     return h + 'h' + (m ? m + 'm' : '');
   }
   function fmtBy(b){

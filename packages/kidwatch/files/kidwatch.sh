@@ -22,7 +22,9 @@ se() { sqlite3 -cmd ".timeout 5000" "$DB" "$1"; }
 do_init() {
 	mkdir -p /etc/kidwatch "$TMP"
 	[ -f "$DB" ] || : > "$DB"
-	sqlite3 "$DB" <<'EOF'
+	# PRAGMA journal_mode / wal_autocheckpoint 会把 wal、256 打到 stdout，
+	# 装包时 post-upgrade 调 init 就会在 apk 日志里冒出这两行，看着像出错。整段静默。
+	sqlite3 "$DB" >/dev/null <<'EOF'
 PRAGMA journal_mode=WAL;
 PRAGMA synchronous=NORMAL;
 PRAGMA wal_autocheckpoint=256;
