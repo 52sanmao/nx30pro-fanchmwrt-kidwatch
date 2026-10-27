@@ -112,6 +112,8 @@ EOF
 	# 幂等——列已存在时 sqlite3 报 duplicate column，忽略即可。
 	sqlite3 "$DB" "ALTER TABLE dev ADD COLUMN nick TEXT NOT NULL DEFAULT '';" 2>/dev/null
 	import_sites
+	# 站点库/关键词表扩容后，把历史上"当时没认出来"的域名补一次分类（幂等）
+	KWDB="$DB" lua /usr/lib/kidwatch/poll.lua --reclass >/dev/null 2>&1
 }
 
 import_sites() {
@@ -551,6 +553,8 @@ case "$cmd" in
 	poll)     do_poll ;;
 	watch)    do_watch ;;
 	sites)    import_sites ;;
+	reclass)  import_sites
+	          KWDB="$DB" lua /usr/lib/kidwatch/poll.lua --reclass ;;
 	maint)    do_maint ;;
 	rotate)   do_rotate "${1:-}" ;;
 	*) echo "usage: kidwatch {init|poll|collect|query|setdev|setsite|sites|maint|rotate}" ;;

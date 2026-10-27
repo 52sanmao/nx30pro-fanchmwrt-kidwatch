@@ -477,3 +477,13 @@ wps.cn	WPS	tool
 ximalaya.com	喜马拉雅	music
 yahoo.com	雅虎	news
 zijieapi.com	字节接口	cdn
+# ---- 2026-10-27 补充：当日出现但库里没有、逐个核对过的域名 ----
+c-ctrip.com	携程CDN	shop
+jiemian.com	界面新闻	news
+paypal.com	PayPal	shop
+paypalobjects.com	PayPal静态资源	shop
+workbuddy.link	WorkBuddy分享页	tool
+windhub.cc	New API网关	tool
+xiaoxiaobujidao.xyz	布吉岛(代理)	tool
+imedao.com	雪球	news
+tianwenca.com	CDN服务商	tool

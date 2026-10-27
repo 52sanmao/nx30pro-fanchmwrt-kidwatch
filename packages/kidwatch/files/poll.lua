@@ -281,6 +281,45 @@ local function guess_cat(host)
   return nil
 end
 
+--[[ 存量站点补分类（--reclass，幂等）
+
+分类是在"第一次见到某个域名"那一刻算出来并写进 site 的。可关键词表 KEYCAT 和
+sites.tsv 是后来才加上去的 —— 老域名早就以"没条目"的样子躺在库里，详单里永远
+显示未分类。这个模式拿现有 sess 里出现过的域名重跑一遍 guess_cat，只补没有条目的，
+绝不覆盖用户手改（src=1）与站点库（src=0）。init 之后跑一次即可，重复跑无副作用。
+]]
+if arg and arg[1] == "--reclass" then
+  local have = {}
+  local p = io.popen("sqlite3 '" .. DB .. "' \"SELECT dom FROM site\" 2>/dev/null")
+  if p then
+    for line in p:lines() do if line ~= "" then have[line] = true end end
+    p:close()
+  end
+  local out, n = { "BEGIN;" }, 0
+  local q = io.popen("sqlite3 '" .. DB .. "' \"" ..
+    "SELECT dom FROM sess WHERE dom<>'' GROUP BY dom\" 2>/dev/null")
+  if q then
+    for dom in q:lines() do
+      if dom ~= "" and not have[dom] then
+        local c = guess_cat(dom)
+        -- cdn 不进库：这类条目只记次数不记时长，写进去反而让类目分布多一堆噪音
+        if c and c ~= "cdn" then
+          out[#out + 1] = string.format(
+            "INSERT OR IGNORE INTO site(dom,name,cat,src) VALUES('%s','','%s',3);",
+            esc(dom), c)
+          n = n + 1
+        end
+      end
+    end
+    q:close()
+  end
+  out[#out + 1] = "COMMIT;"
+  local w = io.popen("sqlite3 '" .. DB .. "' 2>/dev/null", "w")
+  if w then w:write(table.concat(out, "\n"), "\n"); w:close() end
+  print(string.format("reclass ok: %d sites added", n))
+  os.exit(0)
+end
+
 -- 设备在线状态（get_all_users 是终端列表的同一份数据）
 -- 顺手把固件里给设备起的备注（nickname）捞出来：固件"终端列表"显示的就是它，
 -- 我们这边以前只认自己的 alias，结果同一台机器在两边叫两个名字。
