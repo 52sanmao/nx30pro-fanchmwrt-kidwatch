@@ -1,0 +1,157 @@
+<%+header%>
+<%
+-- DDNS-Go 不在固件里，是从 GitHub release 直接装的二进制（/usr/bin/ddns-go），
+-- 自带一个 http 管理界面（默认 9876）。这里只做两件事：
+--   ① 把「进程活没活 / 解析到哪个 IP / 外网该用哪个地址」摆出来，省得每次进去翻；
+--   ② 给一个入口跳过去。不做 iframe：LuCI 是 https，ddns-go 只有 http，
+--      混在 https 页面里会被浏览器按混合内容拦掉。
+local function sh(cmd)
+	local f = io.popen(cmd .. " 2>/dev/null")
+	local s = f and f:read("*a") or ""
+	if f then f:close() end
+	return (s or ""):gsub("%s+$", "")
+end
+
+-- pidof 按 /proc/<pid>/comm 精确匹配；pgrep -x 在这版 busybox 上
+-- 实际是按整条 cmdline 比，永远匹配不上，会误报「未运行」。
+local pid = sh("pidof ddns-go"):match("^%d+") or ""
+
+local port = sh("uci -q get ddns-go.main.port")
+if port == "" then port = "9876" end
+
+-- 域名：config.yaml 是 ddns-go 自己写的，结构固定但缩进深，
+-- 用「domains: 之后连续的 - xxx 行」来收，遇到别的键就停，避免把
+-- dns 段里的其它列表项当成域名。
+local domains = {}
+local inDom = false
+for line in (sh("cat /etc/ddns-go/config.yaml") .. "\n"):gmatch("([^\n]*)\n") do
+	if line:match("^%s*domains:%s*$") then
+		inDom = true
+	elseif inDom then
+		local d = line:match("^%s*%-%s*([%w%._%-]+%.[%w%._%-]+)%s*$")
+		if d then
+			domains[#domains + 1] = d
+		else
+			inDom = false
+		end
+	end
+end
+
+-- WAN 侧 IPv6：eth1 上第一个 scope global 的地址，就是 ddns-go 用
+-- 「通过网卡获取」会报上去的那个（也是现场出网用的源地址）。
+local v6 = ""
+for line in (sh("ip -6 addr show dev eth1") .. "\n"):gmatch("([^\n]*)\n") do
+	if v6 == "" then
+		local a = line:match("inet6%s+([%x:]+)/%d+%s+scope%s+global")
+		if a then v6 = a end
+	end
+end
+%>
+<style>
+#ddg{width:calc(100% - 16px);max-width:900px;margin:0 auto 24px;color:inherit;font-size:14px}
+#ddg *{box-sizing:border-box}
+#ddg .ddg-card{border:1px solid #d9dee7;border-radius:10px;background:#fff;padding:16px 18px;margin-bottom:14px}
+[data-darkmode="true"] #ddg .ddg-card{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.14)}
+#ddg .ddg-title{font-size:17px;font-weight:600;margin:0 0 4px}
+#ddg .ddg-hint{font-size:12.5px;color:#667085;margin:0}
+[data-darkmode="true"] #ddg .ddg-hint{color:#9aa3b2}
+#ddg .ddg-row{display:flex;gap:14px;align-items:baseline;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.055)}
+[data-darkmode="true"] #ddg .ddg-row{border-bottom-color:rgba(255,255,255,.08)}
+#ddg .ddg-row:last-child{border-bottom:0}
+#ddg .ddg-k{width:96px;flex:none;color:#667085;font-size:13px}
+[data-darkmode="true"] #ddg .ddg-k{color:#9aa3b2}
+#ddg .ddg-v{flex:1;min-width:0;word-break:break-all;font-variant-numeric:tabular-nums}
+#ddg .ddg-v code{background:rgba(0,0,0,.045);padding:1px 5px;border-radius:4px;font-size:12.5px}
+[data-darkmode="true"] #ddg .ddg-v code{background:rgba(255,255,255,.09)}
+#ddg .ddg-on{color:#12a150;font-weight:600}
+[data-darkmode="true"] #ddg .ddg-on{color:#3ddc84}
+#ddg .ddg-off{color:#d92d20;font-weight:600}
+[data-darkmode="true"] #ddg .ddg-off{color:#ff7b72}
+#ddg .ddg-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 16px;border-radius:7px;
+  border:1px solid #2885e8;background:#2885e8;color:#fff;font-size:13.5px;font-weight:600;text-decoration:none}
+#ddg .ddg-btn:hover{background:#1f70c8;border-color:#1f70c8;color:#fff;text-decoration:none}
+#ddg .ddg-note{font-size:12.5px;line-height:1.75;color:#667085;margin:10px 0 0}
+[data-darkmode="true"] #ddg .ddg-note{color:#9aa3b2}
+#ddg .ddg-note b{color:inherit;font-weight:600}
+</style>
+
+<div id="ddg">
+	<div class="ddg-card">
+		<h2 class="ddg-title">DDNS-Go</h2>
+		<p class="ddg-hint">独立运行的小程序，负责把路由器当前的公网 IPv6 同步到 Cloudflare 域名上。</p>
+
+		<div class="ddg-row">
+			<div class="ddg-k">服务状态</div>
+			<div class="ddg-v">
+				<% if pid ~= "" then %>
+					<span class="ddg-on">● 运行中</span> <span style="color:#667085;font-size:12.5px">PID <%=pid%></span>
+				<% else %>
+					<span class="ddg-off">● 未运行</span>
+					<span style="color:#667085;font-size:12.5px">（/etc/init.d/ddns-go start）</span>
+				<% end %>
+			</div>
+		</div>
+
+		<div class="ddg-row">
+			<div class="ddg-k">管理端口</div>
+			<div class="ddg-v"><code><%=port%></code>（http，内网可访问）</div>
+		</div>
+
+		<div class="ddg-row">
+			<div class="ddg-k">同步域名</div>
+			<div class="ddg-v">
+				<% if #domains > 0 then %>
+					<% for _, d in ipairs(domains) do %><code><%=d%></code> <% end %>
+				<% else %>
+					<span style="color:#d92d20">尚未配置域名</span>
+				<% end %>
+			</div>
+		</div>
+
+		<div class="ddg-row">
+			<div class="ddg-k">当前 IPv6</div>
+			<div class="ddg-v">
+				<% if v6 ~= "" then %><code><%=v6%></code><% else %><span style="color:#d92d20">WAN 口没有拿到公网 IPv6</span><% end %>
+			</div>
+		</div>
+
+		<div class="ddg-row">
+			<div class="ddg-k">远程访问</div>
+			<div class="ddg-v">
+				<% if #domains > 0 then %>
+					<code>https://<%=domains[1]%>:8443</code>
+				<% else %>
+					<span style="color:#667085">配置域名后可用</span>
+				<% end %>
+			</div>
+		</div>
+
+		<p class="ddg-note">
+			管理界面是独立的 <b>http</b> 服务（不是本页的 https），点下面的按钮会新开一个标签页，
+			需要单独登录一次。
+		</p>
+		<p style="margin:14px 0 0">
+			<a class="ddg-btn" id="ddg-open" href="#" target="_blank" rel="noopener">打开 DDNS-Go 管理界面 ↗</a>
+		</p>
+	</div>
+
+	<div class="ddg-card">
+		<p class="ddg-note" style="margin:0">
+			<b>关于端口：</b>IPv6 没有 NAT，但光猫和本机防火墙都会拦入站。当前已在防火墙放行 <code>8443</code>
+			（HTTPS 进 LuCI），80/443 保持关闭。如果外部访问不通，先确认光猫侧是否开了「IPv6 防火墙」，
+			再考虑换端口。
+		</p>
+	</div>
+</div>
+
+<script>
+(function () {
+	/* hostname 在 IPv6 字面量访问时是带方括号的（[2409:...]），
+	   location.host 又会带上当前的 https 端口，所以拆开重新拼。 */
+	var h = (location.hostname || '').replace(/^\[|\]$/g, '');
+	var host = h.indexOf(':') >= 0 ? '[' + h + ']' : h;
+	var a = document.getElementById('ddg-open');
+	if (a) a.href = 'http://' + host + ':<%=port%>/';
+})();
+</script>
+<%+footer%>

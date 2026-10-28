@@ -36,6 +36,15 @@ function index()
 	-- 「运行状态」不占守护视图：挂进固件「系统监控」组 (admin/fwx_monitor，
 	-- 固件 order 12) 的末尾，URL 末段保持 sys，模板据此打开整机指标视角。
 	entry({"admin", "fwx_monitor", "sys"}, template("kidwatch/main"), "运行状态", 60).dependent = true
+
+	-- DDNS-Go 是后装的独立程序（/usr/bin/ddns-go，自带 http 管理界面），
+	-- 固件菜单里本来没有它。这里补一个入口。
+	-- 节点名故意不带 fwx 前缀：主题的 getMenuCategory() 据此归到「高级模式」，
+	-- 正好符合它"进阶功能"的定位，也不会把普通模式的顺序挤乱。
+	-- 用 alias 让顶层直接可点，不必先展开再点一层。
+	entry({"admin", "ddnsgo"}, alias("admin", "ddnsgo", "cfg"), "DDNS-Go", 88).dependent = true
+	entry({"admin", "ddnsgo", "cfg"}, template("kidwatch/ddnsgo"), "运行状态", 10).dependent = true
+
 	entry({"admin", "kidwatch_api", "call"}, call("api")).leaf = true
 end
 
