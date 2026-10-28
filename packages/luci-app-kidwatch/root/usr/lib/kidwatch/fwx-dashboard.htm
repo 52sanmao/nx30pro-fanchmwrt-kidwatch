@@ -14,15 +14,15 @@
         --chart-split-line-dashed-color: rgba(0, 0, 0, 0.15);
         --chart-tooltip-bg: rgba(255, 255, 255, 0.95);
         --chart-tooltip-text: #333333;
-        --temp-bar-default-gradient: linear-gradient(90deg,#d9eefc,#ff9800);
-        --temp-space-bar-gradient: linear-gradient(90deg,#22c4df,#4ea6f6);
-        --storage-bar-gradient: linear-gradient(90deg,#1fc2de,#4ca6fb);
+        --temp-bar-default-gradient: linear-gradient(90deg,#3b82f6,#06b6d4);
+        --temp-space-bar-gradient: linear-gradient(90deg,#3b82f6,#06b6d4);
+        --storage-bar-gradient: linear-gradient(90deg,#3b82f6,#06b6d4);
         --storage-bar-shadow: 0 0 10px rgba(66, 214, 255, 0.34);
     }
 
     [data-darkmode="true"] {
-        --temp-space-bar-gradient: linear-gradient(90deg,#a1ecff,#abd5ff);
-        --storage-bar-gradient: linear-gradient(90deg,#9deaff,#a6ceff);
+        --temp-space-bar-gradient: linear-gradient(90deg,#3b82f6,#06b6d4);
+        --storage-bar-gradient: linear-gradient(90deg,#3b82f6,#06b6d4);
         --storage-bar-shadow: 0 0 14px rgba(151, 217, 255, 0.58);
     }
 
@@ -2610,28 +2610,28 @@
                 <div class="vital-row">
                     <span class="vital-label">CPU 负载</span>
                     <div class="vital-bar-box">
-                        <div class="vital-bar-fill" id="cpu-bar" style="width: 0%; background: #3b82f6;"></div>
+                        <div class="vital-bar-fill" id="cpu-bar" style="width: 0%; background: linear-gradient(90deg,#3b82f6,#06b6d4);"></div>
                     </div>
                     <span class="vital-val" id="cpu-pct">--</span>
                 </div>
                 <div class="vital-row">
                     <span class="vital-label">内存占用</span>
                     <div class="vital-bar-box">
-                        <div class="vital-bar-fill" id="mem-bar" style="width: 0%; background: #8b5cf6;"></div>
+                        <div class="vital-bar-fill" id="mem-bar" style="width: 0%; background: linear-gradient(90deg,#3b82f6,#06b6d4);"></div>
                     </div>
                     <span class="vital-val" id="mem-pct">--</span>
                 </div>
                 <div class="vital-row">
                     <span class="vital-label" id="cpu-temp-label">核心温度</span>
                     <div class="vital-bar-box">
-                        <div class="vital-bar-fill" id="cpu-temp-bar" style="width: 0%; background: #10b981;"></div>
+                        <div class="vital-bar-fill" id="cpu-temp-bar" style="width: 0%; background: linear-gradient(90deg,#3b82f6,#06b6d4);"></div>
                     </div>
                     <span class="vital-val" id="cpu-temp-text">--</span>
                 </div>
                 <div class="vital-row">
                     <span class="vital-label">储存使用</span>
                     <div class="vital-bar-box">
-                        <div class="vital-bar-fill" id="disk-bar" style="width: 0%; background: #f59e0b;"></div>
+                        <div class="vital-bar-fill" id="disk-bar" style="width: 0%; background: linear-gradient(90deg,#3b82f6,#06b6d4);"></div>
                     </div>
                     <span class="vital-val" id="disk-pct">--</span>
                 </div>
@@ -5181,11 +5181,18 @@
         if (title !== undefined) el.title = title;
     }
 
-    function v3Bar(id, percent) {
+    /* 四条指标条统一走「蓝 → 青」渐变：和流量排行的进度条同一条色带，
+       页面里所有横向进度条看起来才是同一套设计。只有越过告警线时才换色，
+       否则一个数字变红就够了，不需要整条变色。 */
+    var V3_BAR_BLUE  = 'linear-gradient(90deg,#3b82f6,#06b6d4)';
+    var V3_BAR_ALERT = 'linear-gradient(90deg,#f97316,#ef4444)';
+
+    function v3Bar(id, percent, bg) {
         var el = document.getElementById(id);
         if (!el) return;
         var w = Math.max(0, Math.min(100, Number(percent) || 0));
         el.style.width = (w > 0 ? Math.max(w, 2) : 0) + '%';
+        if (bg) el.style.background = bg;
     }
 
     function v3SyncWanCard(sys, net) {
@@ -5235,10 +5242,10 @@
     function v3SyncVitals(sys) {
         var cpu = parseFloat(sys && sys.cpu);
         if (isFinite(cpu)) {
-            v3Bar('cpu-bar', cpu);
+            v3Bar('cpu-bar', cpu, cpu >= 90 ? V3_BAR_ALERT : V3_BAR_BLUE);
             v3Text('cpu-pct', Math.round(cpu) + '%');
         } else {
-            v3Bar('cpu-bar', 0);
+            v3Bar('cpu-bar', 0, V3_BAR_BLUE);
             v3Text('cpu-pct', '--');
         }
 
@@ -5246,24 +5253,20 @@
         var usedMem = parseInt(sys && sys.used_mem, 10);
         if (totalMem > 0 && isFinite(usedMem)) {
             var memPct = usedMem / totalMem * 100;
-            v3Bar('mem-bar', memPct);
+            v3Bar('mem-bar', memPct, memPct >= 90 ? V3_BAR_ALERT : V3_BAR_BLUE);
             v3Text('mem-pct', Math.round(memPct) + '%');
         } else {
-            v3Bar('mem-bar', 0);
+            v3Bar('mem-bar', 0, V3_BAR_BLUE);
             v3Text('mem-pct', '--');
         }
 
-        /* 温度进度条按 100℃ 满格，超过 80℃ 转红，和「核心温度」的直觉一致 */
+        /* 温度进度条按 100℃ 满格，超过 80℃ 切换成告警色 */
         var temp = parseFloat(sys && sys.cpu_temp);
-        var tempBar = document.getElementById('cpu-temp-bar');
         if (isFinite(temp) && temp > 0) {
-            v3Bar('cpu-temp-bar', temp);
-            if (tempBar) {
-                tempBar.style.background = temp >= 80 ? '#ef4444' : (temp >= 65 ? '#f59e0b' : '#10b981');
-            }
+            v3Bar('cpu-temp-bar', temp, temp >= 80 ? V3_BAR_ALERT : V3_BAR_BLUE);
             v3Text('cpu-temp-text', Math.round(temp) + '\u00B0C');
         } else {
-            v3Bar('cpu-temp-bar', 0);
+            v3Bar('cpu-temp-bar', 0, V3_BAR_BLUE);
             v3Text('cpu-temp-text', '--');
         }
 
@@ -5275,13 +5278,11 @@
         var dUsed = vol ? (parseInt(vol.used_kb, 10) || 0) : 0;
         if (dTotal > 0) {
             var dPct = dUsed / dTotal * 100;
-            var dBar = document.getElementById('disk-bar');
-            v3Bar('disk-bar', dPct);
-            if (dBar) dBar.style.background = dPct >= 90 ? '#ef4444' : (dPct >= 75 ? '#f97316' : '#f59e0b');
+            v3Bar('disk-bar', dPct, dPct >= 90 ? V3_BAR_ALERT : V3_BAR_BLUE);
             v3Text('disk-pct', Math.round(dPct) + '%',
                    formatStorage(dUsed) + ' / ' + formatStorage(dTotal) + '（可写分区）');
         } else {
-            v3Bar('disk-bar', 0);
+            v3Bar('disk-bar', 0, V3_BAR_BLUE);
             v3Text('disk-pct', '--', '');
         }
 
