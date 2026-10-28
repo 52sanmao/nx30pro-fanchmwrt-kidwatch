@@ -79,7 +79,58 @@ for line in $PAGES; do
 	fi
 done
 
+# ---------------------------------------------------------------------------
+# 侧边栏顺序：把「网络设置」「无线设置」挪到倒数第四、第三
+#
+# 分类顺序就是 entry() 里那个数字（LuCI 按它升序排）。固件原值是：
+#   守护视图 5 · 系统监控 12 · 终端列表 13 · 应用中心 15 · 行为管理 30
+#   网络设置 29 · 无线设置 30 · 上网审计 80 · 网络工具 89 · 高级设置 90
+# 目标：网络设置 85、无线设置 87 —— 落在上网审计(80) 与网络工具(89) 之间，
+# 于是从底部数：高级设置、网络工具、无线设置、网络设置。
+#
+# 只改这两个数字，不动别的；sed 的匹配串带上原文里的标题，避免误伤同文件的
+# 其它 entry。已经是新值时不匹配 → 天然幂等。
+# ---------------------------------------------------------------------------
+NET_LUA=/usr/lib/lua/luci/controller/fwx_network.lua
+WIFI_LUA=/usr/lib/lua/luci/controller/fwx_wireless_base_setting.lua
+
+patch_order() {
+	file="$1"; from="$2"; to="$3"
+	[ -f "$file" ] || return 0
+	bak="/usr/lib/kidwatch/$(basename "$file").orig"
+	# 备份只存固件原版：/rom 里那份永远是原版，优先用它
+	if [ ! -f "$bak" ]; then
+		if [ -f "/rom$file" ]; then cp "/rom$file" "$bak" 2>/dev/null
+		else cp "$file" "$bak" 2>/dev/null; fi
+	fi
+	grep -qF "$from" "$file" || return 0
+	sed -i "s|$from|$to|" "$file" || return 1
+	CHANGED=1
+}
+
+restore_order() {
+	file="$1"
+	bak="/usr/lib/kidwatch/$(basename "$file").orig"
+	[ -f "$bak" ] || return 0
+	[ -f "$file" ] || return 0
+	cmp -s "$bak" "$file" && return 0
+	cp "$bak" "$file" || return 1
+	CHANGED=1
+}
+
+if [ "$1" = "restore" ]; then
+	restore_order "$NET_LUA"
+	restore_order "$WIFI_LUA"
+else
+	patch_order "$NET_LUA"  '_("Network Setting"), 29)'  '_("Network Setting"), 85)'
+	patch_order "$WIFI_LUA" '_("Wireless Setting"), 30)' '_("Wireless Setting"), 87)'
+fi
+
 # 页面模板变了要清 modulecache，否则 uhttpd 还拿旧编译结果
-[ "$CHANGED" = "1" ] && rm -rf /tmp/luci-modulecache
+# 菜单索引是单独的缓存，改完顺序不清它还按旧顺序排
+if [ "$CHANGED" = "1" ]; then
+	rm -rf /tmp/luci-modulecache
+	rm -f /tmp/luci-indexcache* 2>/dev/null
+fi
 
 exit 0

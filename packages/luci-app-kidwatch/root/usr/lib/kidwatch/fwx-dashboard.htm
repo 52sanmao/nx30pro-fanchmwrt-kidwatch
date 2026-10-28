@@ -2628,6 +2628,13 @@
                     </div>
                     <span class="vital-val" id="cpu-temp-text">--</span>
                 </div>
+                <div class="vital-row">
+                    <span class="vital-label">储存使用</span>
+                    <div class="vital-bar-box">
+                        <div class="vital-bar-fill" id="disk-bar" style="width: 0%; background: #f59e0b;"></div>
+                    </div>
+                    <span class="vital-val" id="disk-pct">--</span>
+                </div>
             </div>
             <div class="hw-footer-note">
                 <span>运行时间 <b id="sys-uptime" style="color:var(--text-main);">--</b></span>
@@ -5258,6 +5265,24 @@
         } else {
             v3Bar('cpu-temp-bar', 0);
             v3Text('cpu-temp-text', '--');
+        }
+
+        /* 储存：只看可写的 overlay。squashfs 那层只读且大小固定，
+           算进去会让人误以为快满了。sys.storage 里 root 就是 overlay。 */
+        var st = sys && sys.storage;
+        var vol = st && (st.root || st.overlay);
+        var dTotal = vol ? parseInt(vol.total_kb, 10) : 0;
+        var dUsed = vol ? (parseInt(vol.used_kb, 10) || 0) : 0;
+        if (dTotal > 0) {
+            var dPct = dUsed / dTotal * 100;
+            var dBar = document.getElementById('disk-bar');
+            v3Bar('disk-bar', dPct);
+            if (dBar) dBar.style.background = dPct >= 90 ? '#ef4444' : (dPct >= 75 ? '#f97316' : '#f59e0b');
+            v3Text('disk-pct', Math.round(dPct) + '%',
+                   formatStorage(dUsed) + ' / ' + formatStorage(dTotal) + '（可写分区）');
+        } else {
+            v3Bar('disk-bar', 0);
+            v3Text('disk-pct', '--', '');
         }
 
         var model = String((sys && (sys.cpu_model_name || sys.model)) || '').trim();

@@ -302,15 +302,10 @@
 			return mac;
 		}
 
+		/* 点一下直接删。确认框去掉了 —— 这是可恢复操作（右上角胶囊一键恢复），
+		   为它挡一次点击不划算。 */
 		function kwDelDev(mac, btn) {
 			if (!mac) return;
-			var name = kwNameOf(mac, btn);
-			var msg = '删除「' + name + '」？\n\n'
-				+ '· 这台设备在今天、夜间时间带、上网详单里的记录都会被清空\n'
-				+ '· 之后不再统计它（重新联网也不会自动回来）\n'
-				+ '· 不影响它的正常上网，也不动路由器自己的终端记录\n\n'
-				+ '删错了可以点列表右上角的「已删除 N 台 · 点此恢复」。';
-			if (!confirm(msg)) return;
 			kwApi({fn: 'setdev', mac: mac, key: 'del', val: ''}).then(function (r) {
 				if (!r || r.ok !== true) {
 					alert('删除失败：' + JSON.stringify(r));
@@ -319,6 +314,7 @@
 				KW_HID[mac] = 1;
 				KW_HID_N++;
 				render_hid_bar();
+				kwToast('已删除「' + kwNameOf(mac, btn) + '」· 右上角可恢复');
 				getAllUsersData(cur_page);   /* 立刻重画，不用等 3 秒轮询 */
 			}).catch(function (e) { alert('删除失败：' + e); });
 		}
@@ -330,6 +326,18 @@
 				if (!r || r.ok !== true) { alert('恢复失败：' + JSON.stringify(r)); return; }
 				kwLoadHid().then(function () { getAllUsersData(cur_page); });
 			}).catch(function (e) { alert('恢复失败：' + e); });
+		}
+
+		/* 无确认框时给一次明确回执：谁被删了、还能不能救回来 */
+		var kwToastTimer = null;
+		function kwToast(text) {
+			var $t = $('#kw-toast');
+			if (!$t.length) {
+				$t = $('<div id="kw-toast"></div>').appendTo('body');
+			}
+			$t.text(text).addClass('on');
+			if (kwToastTimer) clearTimeout(kwToastTimer);
+			kwToastTimer = setTimeout(function () { $t.removeClass('on'); }, 2600);
 		}
 
 		$(document).on('click', '#kw-hid-bar', kwRestoreHid);
@@ -2335,6 +2343,30 @@
 	.kw-hid-bar:hover {
 		border-color: #60a5fa;
 		color: #3b82f6;
+	}
+
+	#kw-toast {
+		position: fixed;
+		left: 50%;
+		bottom: 28px;
+		transform: translate(-50%, 12px);
+		padding: 8px 16px;
+		border-radius: 999px;
+		background: rgba(17, 24, 39, .92);
+		color: #f3f4f6;
+		font-size: 13px;
+		line-height: 1.5;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, .28);
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity .18s ease, transform .18s ease;
+		z-index: 9999;
+		white-space: nowrap;
+	}
+
+	#kw-toast.on {
+		opacity: 1;
+		transform: translate(-50%, 0);
 	}
 
 	@media (max-width: 768px) {
