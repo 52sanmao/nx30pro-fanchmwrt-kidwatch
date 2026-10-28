@@ -169,7 +169,8 @@
   text-overflow:ellipsis;white-space:nowrap}
 #kw .kw-rmeta{font-size:11.5px;color:var(--kw-dim);text-align:right;
   font-variant-numeric:tabular-nums;white-space:nowrap}
-#kw .kw-rmeta.hot{color:#D85A30}
+#kw .kw-rmeta.hot{color:#2A86C4}
+[data-darkmode="true"] #kw .kw-rmeta.hot{color:#4CC4DA}
 #kw .kw-rtrack{position:relative;height:20px;border-radius:5px;background:var(--kw-well);
   box-shadow:inset 0 0 0 1px var(--kw-border)}
 #kw .kw-rsegs i{position:absolute;top:0;bottom:0;border-radius:3px;display:block}
@@ -197,7 +198,8 @@
   border-radius:2px;cursor:crosshair;position:relative;min-width:0}
 #kw .kw-hcell i{position:absolute;inset:0;border-radius:2px;display:block}
 #kw .kw-hcell:hover{box-shadow:inset 0 0 0 1px var(--kw-dim);z-index:2}
-#kw .kw-hcell.sel{box-shadow:0 0 0 2px #D85A30, 0 0 0 3px rgba(216,90,48,.28);z-index:3}
+#kw .kw-hcell.sel{box-shadow:0 0 0 2px #2A86C4, 0 0 0 3px rgba(42,134,196,.26);z-index:3}
+[data-darkmode="true"] #kw .kw-hcell.sel{box-shadow:0 0 0 2px #4CC4DA, 0 0 0 3px rgba(76,196,218,.26)}
 /* 图例：连续色条，代替原来四个离散色块 —— 颜色现在是渐变的 */
 #kw .kw-nrailfoot .grad{display:inline-flex;align-items:center;gap:6px}
 #kw .kw-nrailfoot .grad s{width:82px;height:8px;border-radius:2px;display:inline-block;
@@ -1467,7 +1469,7 @@
   }
   var BANDS = ['静默','轻微','活跃','重度','极高'];
   function band(sc){ return sc<20?0: sc<45?1: sc<70?2: sc<85?3:4; }
-  function bandColor(b){ return hexA('#D85A30', [0.09,0.26,0.46,0.70,0.95][b]); }
+  function bandColor(b){ return hexA('#2A86C4', [0.09,0.26,0.46,0.70,0.95][b]); }
   function hexA(hex, a){
     var r = parseInt(hex.substr(1,2),16), g = parseInt(hex.substr(3,2),16), b = parseInt(hex.substr(5,2),16);
     return 'rgba('+r+','+g+','+b+','+a+')';
@@ -1501,7 +1503,11 @@
       h += row('状态','这一段时间没联网');
       return h;
     }
-    var col = sc>=70 ? '#D85A30' : (sc>=45 ? '#B57A0C' : (sc>0 ? '#8A8F98' : '#9ca3af'));
+    // 分值文字跟着热力色带走蓝青：浅底用深蓝、深底用亮青
+    var tdk = themeIsDark();
+    var col = sc>=70 ? (tdk ? '#8CE4F2' : '#1B5E9C')
+            : sc>=45 ? (tdk ? '#4CC4DA' : '#2A86C4')
+            : sc > 0 ? (tdk ? '#2FA3BE' : '#3E94B8') : '#9ca3af';
     h += row('活跃', mins + ' 分钟 / ' + Math.round(span/60) + ' 分钟');
     h += row('峰值活跃度','<span style="color:'+col+'">'+sc+' 分 · '+BANDS[band(sc)]+'</span>');
     if (baseAir > 0) h += row('平时上限',(baseAir/1000).toFixed(1)+' 秒');
@@ -1769,13 +1775,13 @@
   }
 
   // 渐变而不是"五档离散色"：从低到高插值，颜色随使用强度连续变化。
-  // 两套色阶是因为浅色底上的浅米白放到深色底会糊成一片，反之亦然。
-  // 低端不要用接近底色的浅灰/深蓝：轨道本身就是浅灰，那样"轻微在用"会看成空白。
-  // 两套色阶的低端都从米黄/褐黄起步，保证一眼能分出"有记录"和"没记录"。
-  var RAMP_L = [[0,'#F6E6CC'],[0.18,'#F0C382'],[0.40,'#EDA24E'],
-                [0.65,'#DC7028'],[0.85,'#BE3E1B'],[1,'#7E2410']];
-  var RAMP_D = [[0,'#5B4A32'],[0.18,'#8A6A35'],[0.40,'#B27A28'],
-                [0.65,'#CF7524'],[0.85,'#E2641F'],[1,'#F58F52']];
+  // 两套色阶是因为浅色底上的浅色放到深色底会糊成一片，反之亦然。
+  // 低端不要用接近底色的浅灰：轨道本身就是浅灰，那样"轻微在用"会看成空白。
+  // 色带统一走「蓝 → 青」：低端浅青、中段正青、高端深蓝，与仪表板进度条同一套语言。
+  var RAMP_L = [[0,'#C9E6F4'],[0.18,'#93D2E9'],[0.40,'#54B2DB'],
+                [0.65,'#2A86C4'],[0.85,'#1B5E9C'],[1,'#0D3B6B']];
+  var RAMP_D = [[0,'#173C50'],[0.18,'#1D5B74'],[0.40,'#247C99'],
+                [0.65,'#2FA3BE'],[0.85,'#4CC4DA'],[1,'#8CE4F2']];
   function rgbOf(h){
     return [parseInt(h.substr(1,2),16), parseInt(h.substr(3,2),16), parseInt(h.substr(5,2),16)];
   }
@@ -2027,6 +2033,11 @@
       return;
     }
 
+    // 七夜格用同一套蓝青色带：浅色底走中蓝，深色底走亮青（深蓝压在深底上会看不见）
+    var wkDark = themeIsDark();
+    var wkBase = wkDark ? '#4CC4DA' : '#2A86C4';
+    var wkInk = wkDark ? '#06212B' : '#ffffff';
+
     var h = '<div class="kw-wkrow hd"><div class="nm">设备</div>'
           + days.map(function(d){ return '<div class="dy">' + mmdd(d) + '</div>'; }).join('')
           + '</div>';
@@ -2036,7 +2047,7 @@
       days.forEach(function(dd){
         var m = agg[d.mac + '|' + dd] || 0;
         var a = m ? (0.13 + 0.72 * Math.min(1, m / Math.max(40, maxM))) : 0;
-        var st = m ? 'background:' + hexA('#D85A30', a) + ';' + (a > 0.42 ? 'color:#fff;' : '') : '';
+        var st = m ? 'background:' + hexA(wkBase, a) + ';' + (a > 0.42 ? 'color:' + wkInk + ';' : '') : '';
         h += '<div class="kw-wkc' + (dd === day ? ' on' : '') + (m ? '' : ' empty') + '"'
            +   ' data-day="' + dd + '" style="' + st + '"'
            +   ' title="' + mmdd(dd) + ' · ' + (m ? m + ' 分钟' : '无活动') + '">'
